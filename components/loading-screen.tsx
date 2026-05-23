@@ -38,6 +38,7 @@ export function LoadingScreen({
         if (loaded >= urls.length) setImagesReady(true);
       };
     }
+    setTimeout(() => setImagesReady(true), 8000);
   }, []);
 
   useEffect(() => {

@@ -3,7 +3,7 @@ import type { AlbumSequence } from "./types";
 export const ALBUM_DATA: AlbumSequence = {
   layers: [
     {
-      imageUrl: "/images/01.jpg",
+      imageUrl: "/images/01.webp",
       selection: {
         id: "sel-1",
         trackId: "track-1",
@@ -54,7 +54,7 @@ export const ALBUM_DATA: AlbumSequence = {
       },
     },
     {
-      imageUrl: "/images/02.jpg",
+      imageUrl: "/images/02.webp",
       selection: {
         id: "sel-2",
         trackId: "track-2",
@@ -123,7 +123,7 @@ export const ALBUM_DATA: AlbumSequence = {
       },
     },
     {
-      imageUrl: "/images/03.jpg",
+      imageUrl: "/images/03.webp",
       selection: {
         id: "sel-3",
         trackId: "track-3",
@@ -151,7 +151,7 @@ export const ALBUM_DATA: AlbumSequence = {
       },
     },
     {
-      imageUrl: "/images/04.jpg",
+      imageUrl: "/images/04.webp",
       selection: {
         id: "sel-4",
         trackId: "track-4",
@@ -232,7 +232,7 @@ export const ALBUM_DATA: AlbumSequence = {
       },
     },
     {
-      imageUrl: "/images/05.jpg",
+      imageUrl: "/images/05.webp",
       selection: {
         id: "sel-5",
         trackId: "track-5",
@@ -270,7 +270,7 @@ export const ALBUM_DATA: AlbumSequence = {
       },
     },
     {
-      imageUrl: "/images/06.jpg",
+      imageUrl: "/images/06.webp",
       selection: {
         id: "sel-6",
         trackId: "track-6",
@@ -319,7 +319,7 @@ export const ALBUM_DATA: AlbumSequence = {
       },
     },
     {
-      imageUrl: "/images/07.jpg",
+      imageUrl: "/images/07.webp",
       selection: {
         id: "sel-7",
         trackId: "track-7",
@@ -353,7 +353,7 @@ export const ALBUM_DATA: AlbumSequence = {
       },
     },
     {
-      imageUrl: "/images/08.jpg",
+      imageUrl: "/images/08.webp",
       selection: {
         id: "sel-8",
         trackId: "track-8",
@@ -376,7 +376,7 @@ export const ALBUM_DATA: AlbumSequence = {
       },
     },
   ],
-  finalImage: "/images/09.jpg",
+  finalImage: "/images/09.webp",
   tracks: [
     { id: "track-1", title: "Cry, Kneel, Abate", audioSrc: "/audio/hd/01.mp3" },
     { id: "track-2", title: "Vitriol", audioSrc: "/audio/hd/02.mp3" },
