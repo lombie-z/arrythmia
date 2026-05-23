@@ -22,7 +22,7 @@ export function LoadingScreen({
   const startRef = useRef(Date.now());
   const rafRef = useRef(0);
   const doneRef = useRef(false);
-  const [imagesReady, setImagesReady] = useState(false);
+  const imagesReadyRef = useRef(false);
 
   useEffect(() => {
     const urls = [
@@ -35,10 +35,10 @@ export function LoadingScreen({
       img.src = url;
       img.onload = img.onerror = () => {
         loaded++;
-        if (loaded >= urls.length) setImagesReady(true);
+        if (loaded >= urls.length) imagesReadyRef.current = true;
       };
     }
-    setTimeout(() => setImagesReady(true), 8000);
+    setTimeout(() => { imagesReadyRef.current = true; }, 8000);
   }, []);
 
   useEffect(() => {
@@ -46,7 +46,7 @@ export function LoadingScreen({
       if (doneRef.current) return;
 
       const elapsed = Date.now() - startRef.current;
-      const canFinish = elapsed >= MIN_DISPLAY_MS && imagesReady;
+      const canFinish = elapsed >= MIN_DISPLAY_MS && imagesReadyRef.current;
       const speed = canFinish ? 0.06 : 0.012;
 
       setFillPercent((prev) => {
