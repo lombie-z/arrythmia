@@ -241,7 +241,7 @@ export function useScrollHijack() {
             }
             tickAcc += weight;
           }
-          setTimeout(() => { animatingRef.current = false; }, isTrailTick ? 50 : 400);
+          setTimeout(() => { animatingRef.current = false; }, isTrailTick ? 20 : 400);
           setState((s) => ({ ...s, phase: "drawing", drawnSegments: next }));
         } else {
           const next = Math.max(drawnSegments - steps, 0);
