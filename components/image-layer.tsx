@@ -9,7 +9,7 @@ interface ImageLayerProps {
   visible: boolean;
 }
 
-const EDGE_SNAP = 0.5;
+const EDGE_SNAP = 1;
 
 function snap(v: number): number {
   if (v <= EDGE_SNAP) return 0;

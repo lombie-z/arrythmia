@@ -8,7 +8,7 @@ const LINE_COLOR = "#2563eb";
 const ANCHOR_FILL = "#ffffff";
 const ANCHOR_STROKE = "#2563eb";
 
-const EDGE_THRESHOLD = 0.5;
+const EDGE_THRESHOLD = 1;
 
 function isOnEdge(p: AnchorPoint): boolean {
   return p.x <= EDGE_THRESHOLD || p.x >= 100 - EDGE_THRESHOLD ||
