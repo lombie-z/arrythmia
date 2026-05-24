@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PlasmaOverlay } from "./plasma-overlay";
 
 /* ---------- seeded PRNG for deterministic dead-pixel positions ---------- */
@@ -14,21 +14,14 @@ function mulberry32(seed: number) {
 }
 
 interface DeadPixel {
-  x: number; // % from left
-  y: number; // % from top
-  size: number; // px
+  x: number;
+  y: number;
+  size: number;
   color: string;
 }
 
 const DEAD_PIXEL_COLORS = [
-  "#000",
-  "#000",
-  "#fff",
-  "#ff0000",
-  "#00ff00",
-  "#0000ff",
-  "#ff0000",
-  "#00ff00",
+  "#000", "#000", "#fff", "#ff0000", "#00ff00", "#0000ff", "#ff0000", "#00ff00",
 ];
 
 function generateDeadPixels(count: number): DeadPixel[] {
@@ -38,188 +31,106 @@ function generateDeadPixels(count: number): DeadPixel[] {
     pixels.push({
       x: rng() * 100,
       y: rng() * 100,
-      size: 2 + Math.floor(rng() * 3), // 2-4px
+      size: 2 + Math.floor(rng() * 3),
       color: DEAD_PIXEL_COLORS[Math.floor(rng() * DEAD_PIXEL_COLORS.length)],
     });
   }
   return pixels;
 }
 
-/* ---------- SVG barrel-distortion filter (inline, component-scoped) ----- */
-const BARREL_FILTER_ID = "bsod-barrel";
 const BarrelSvgFilter = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    style={{ position: "absolute", width: 0, height: 0 }}
-    aria-hidden="true"
-  >
+  <svg xmlns="http://www.w3.org/2000/svg" style={{ position: "absolute", width: 0, height: 0 }} aria-hidden="true">
     <defs>
-      <filter id={BARREL_FILTER_ID} x="-5%" y="-5%" width="110%" height="110%">
-        {/* turbulence gives us a subtle displacement source */}
+      <filter id="bsod-barrel" x="-5%" y="-5%" width="110%" height="110%">
         <feGaussianBlur in="SourceGraphic" stdDeviation="0.4" result="blur" />
-        {/* merge original + very slightly blurred to simulate lens softening at edges */}
-        <feMerge>
-          <feMergeNode in="blur" />
-          <feMergeNode in="SourceGraphic" />
-        </feMerge>
+        <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
       </filter>
     </defs>
   </svg>
 );
 
-/* ---------- component --------------------------------------------------- */
-
 export function BsodScreen({ progress }: { progress: number }) {
   const eased = Math.pow(progress, 3.5);
   const pct = Math.min(100, Math.round(eased * 102));
-  const fadingOut = false;
   const deadPixels = useMemo(() => generateDeadPixels(40), []);
-  const plasmaCoverage = Math.max(0, (pct - 85) / 15);
 
-  /* color-fringe offset applied via text-shadow on every text block */
+  // Scroll-driven plasma creeps in partially (up to 0.3 coverage)
+  const scrollCoverage = Math.max(0, (pct - 85) / 15) * 0.3;
+
+  // At 100%, auto-animate plasma from 0.3 → 1.0 over 2s
+  const [autoPlasma, setAutoPlasma] = useState(0);
+  const rafRef = useRef<number>(0);
+  const startedRef = useRef(false);
+
+  useEffect(() => {
+    if (pct >= 100 && !startedRef.current) {
+      startedRef.current = true;
+      const start = performance.now();
+      const animate = (now: number) => {
+        const t = Math.min(1, (now - start) / 2000);
+        const e = t * t * (3 - 2 * t);
+        setAutoPlasma(0.3 + e * 0.7);
+        if (t < 1) rafRef.current = requestAnimationFrame(animate);
+      };
+      rafRef.current = requestAnimationFrame(animate);
+    }
+    if (pct < 100) {
+      startedRef.current = false;
+      setAutoPlasma(0);
+      cancelAnimationFrame(rafRef.current);
+    }
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [pct]);
+
+  const plasmaCoverage = pct >= 100 ? autoPlasma : scrollCoverage;
+
   const fringeStyle = {
     textShadow: "1.5px 0 0 rgba(255,0,0,0.35), -1.5px 0 0 rgba(0,255,255,0.35)",
   };
 
   return (
-    <div
-      className="absolute inset-0"
-      style={{
-        zIndex: 100,
-        opacity: fadingOut ? Math.max(0, 1 - (progress - 0.9) * 10) : 1,
-        transition: fadingOut ? "opacity 100ms" : undefined,
-      }}
-    >
-      {/* inline SVG filter definition */}
+    <div className="absolute inset-0" style={{ zIndex: 100 }}>
       <BarrelSvgFilter />
 
-      {/* ---- main BSOD content layer ---- */}
       <div
         className="absolute inset-0 flex flex-col justify-center px-[10%]"
         style={{
           background: "#0000aa",
           fontFamily: "'Courier New', 'Lucida Console', monospace",
-          /* barrel distortion via perspective warp */
           perspective: "800px",
           perspectiveOrigin: "50% 50%",
         }}
       >
-        {/* inner wrapper that slightly curves toward viewer */}
-        <div
-          style={{
-            transform: "translateZ(12px)",
-            transformStyle: "preserve-3d",
-          }}
-        >
-          <div
-            className="text-white"
-            style={{
-              fontSize: "clamp(80px, 15vw, 160px)",
-              fontWeight: 100,
-              lineHeight: 1,
-              fontFamily: "system-ui, -apple-system, sans-serif",
-              ...fringeStyle,
-            }}
-          >
+        <div style={{ transform: "translateZ(12px)", transformStyle: "preserve-3d" }}>
+          <div className="text-white" style={{ fontSize: "clamp(80px, 15vw, 160px)", fontWeight: 100, lineHeight: 1, fontFamily: "system-ui, -apple-system, sans-serif", ...fringeStyle }}>
             ;)
           </div>
-          <div
-            className="text-white mt-6"
-            style={{
-              fontSize: "clamp(12px, 1.8vw, 20px)",
-              fontWeight: 400,
-              ...fringeStyle,
-            }}
-          >
-            Your PC ran into a problem and needs to restart.
-            We&apos;re just collecting some error info, and then we&apos;ll
-            restart for you.
+          <div className="text-white mt-6" style={{ fontSize: "clamp(12px, 1.8vw, 20px)", fontWeight: 400, ...fringeStyle }}>
+            Your PC ran into a problem and needs to restart. We&apos;re just collecting some error info, and then we&apos;ll restart for you.
           </div>
-          <div
-            className="text-white mt-4"
-            style={{
-              fontSize: "clamp(12px, 1.8vw, 20px)",
-              fontWeight: 400,
-              ...fringeStyle,
-            }}
-          >
+          <div className="text-white mt-4" style={{ fontSize: "clamp(12px, 1.8vw, 20px)", fontWeight: 400, ...fringeStyle }}>
             {pct}% complete
           </div>
-          <div
-            className="text-white/60 mt-12"
-            style={{
-              fontSize: "clamp(8px, 1vw, 11px)",
-              ...fringeStyle,
-            }}
-          >
-            If you&apos;d like to know more, you can search online later for
-            this error: ARRHYTHMIA_TRACK_OVERFLOW
+          <div className="text-white/60 mt-12" style={{ fontSize: "clamp(8px, 1vw, 11px)", ...fringeStyle }}>
+            If you&apos;d like to know more, you can search online later for this error: ARRHYTHMIA_TRACK_OVERFLOW
           </div>
         </div>
       </div>
 
-      {/* ---- scanlines overlay ---- */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            "repeating-linear-gradient(to bottom, transparent 0px, transparent 2px, rgba(0,0,0,0.35) 2px, rgba(0,0,0,0.35) 4px)",
-          zIndex: 1,
-        }}
-        aria-hidden="true"
-      />
+      <div className="absolute inset-0 pointer-events-none" style={{ background: "repeating-linear-gradient(to bottom, transparent 0px, transparent 2px, rgba(0,0,0,0.35) 2px, rgba(0,0,0,0.35) 4px)", zIndex: 1 }} aria-hidden="true" />
 
-      {/* ---- dead pixels ---- */}
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 2 }} aria-hidden="true">
         {deadPixels.map((px, i) => (
-          <div
-            key={i}
-            style={{
-              position: "absolute",
-              left: `${px.x}%`,
-              top: `${px.y}%`,
-              width: px.size,
-              height: px.size,
-              background: px.color,
-            }}
-          />
+          <div key={i} style={{ position: "absolute", left: `${px.x}%`, top: `${px.y}%`, width: px.size, height: px.size, background: px.color }} />
         ))}
       </div>
 
-      {/* ---- CRT vignette (edge darkening) ---- */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(ellipse 80% 80% at 50% 50%, transparent 50%, rgba(0,0,0,0.55) 100%)",
-          zIndex: 3,
-        }}
-        aria-hidden="true"
-      />
+      <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 80% 80% at 50% 50%, transparent 50%, rgba(0,0,0,0.55) 100%)", zIndex: 3 }} aria-hidden="true" />
 
-      {/* ---- chromatic-aberration edge overlay ---- */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          boxShadow:
-            "inset 3px 0 8px rgba(255,0,0,0.12), inset -3px 0 8px rgba(0,255,255,0.12), inset 0 3px 8px rgba(255,0,255,0.08), inset 0 -3px 8px rgba(0,255,0,0.08)",
-          zIndex: 4,
-        }}
-        aria-hidden="true"
-      />
+      <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: "inset 3px 0 8px rgba(255,0,0,0.12), inset -3px 0 8px rgba(0,255,255,0.12), inset 0 3px 8px rgba(255,0,255,0.08), inset 0 -3px 8px rgba(0,255,0,0.08)", zIndex: 4 }} aria-hidden="true" />
 
-      {/* ---- screen edge curvature (inner shadow for CRT bezel feel) ---- */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          borderRadius: "8px",
-          boxShadow: "inset 0 0 60px 10px rgba(0,0,0,0.4)",
-          zIndex: 5,
-        }}
-        aria-hidden="true"
-      />
+      <div className="absolute inset-0 pointer-events-none" style={{ borderRadius: "8px", boxShadow: "inset 0 0 60px 10px rgba(0,0,0,0.4)", zIndex: 5 }} aria-hidden="true" />
 
-      {/* ---- plasma overlay bleeding in from edges ---- */}
       {plasmaCoverage > 0 && (
         <div className="absolute inset-0" style={{ zIndex: 6 }}>
           <PlasmaOverlay coverage={plasmaCoverage} />
