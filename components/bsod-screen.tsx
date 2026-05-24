@@ -22,7 +22,7 @@ export function BsodScreen({ progress }: { progress: number }) {
           lineHeight: 1,
         }}
       >
-        :(
+        ;(
       </div>
       <div
         className="text-white mt-6"
