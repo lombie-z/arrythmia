@@ -29,7 +29,6 @@ export function DragCursor({
         zIndex: 90,
         transform: "translate(-2px, -2px)",
         imageRendering: "pixelated",
-        transition: "left 80ms linear, top 80ms linear",
       }}
     >
       <svg

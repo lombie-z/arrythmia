@@ -142,50 +142,48 @@ export function AlbumViewport() {
           const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
           const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
 
-          // Cursor phases: approach (0-0.08), grab (0.08-0.12), drag (0.12-0.88), release (0.88-0.92), exit (0.92-1)
-          const approach = Math.min(1, dragProgress / 0.08);
-          const isDragPhase = dragProgress > 0.12 && dragProgress < 0.88;
-          const isExiting = dragProgress >= 0.92;
-          const dragT = Math.max(0, Math.min(1, (dragProgress - 0.12) / 0.76));
+          // Cursor phases: approach (0-0.2), hover (0.2-0.25), drag (0.25-0.8), release (0.8-0.85), exit (0.85-1)
+          const dragT = Math.max(0, Math.min(1, (dragProgress - 0.25) / 0.55));
 
           const dx = DRAG_TARGET.dx * dragT;
           const dy = DRAG_TARGET.dy * dragT;
 
-          // Cursor position: enters from top-right, moves to center, drags, exits bottom-left
-          const startX = cx + 30;
-          const startY = cy - 20;
-          const endX = cx + dx - 15;
-          const endY = cy + dy + 15;
+          // Cursor starts off-screen top-right, ends off-screen bottom-left
+          const startX = 105;
+          const startY = -5;
+          const endX = cx + DRAG_TARGET.dx - 20;
+          const endY = cy + DRAG_TARGET.dy + 25;
           let cursorX: number, cursorY: number;
           let cursorStyle: "default" | "grab" | "grabbing";
 
-          if (dragProgress < 0.08) {
-            cursorX = startX + (cx - startX) * approach;
-            cursorY = startY + (cy - startY) * approach;
+          if (dragProgress < 0.2) {
+            const t = dragProgress / 0.2;
+            cursorX = startX + (cx - startX) * t;
+            cursorY = startY + (cy - startY) * t;
             cursorStyle = "default";
-          } else if (dragProgress < 0.12) {
+          } else if (dragProgress < 0.25) {
             cursorX = cx;
             cursorY = cy;
             cursorStyle = "grab";
-          } else if (dragProgress < 0.88) {
+          } else if (dragProgress < 0.8) {
             cursorX = cx + dx;
             cursorY = cy + dy;
             cursorStyle = "grabbing";
-          } else if (dragProgress < 0.92) {
+          } else if (dragProgress < 0.85) {
             cursorX = cx + DRAG_TARGET.dx;
             cursorY = cy + DRAG_TARGET.dy;
             cursorStyle = "grab";
           } else {
-            const exitT = (dragProgress - 0.92) / 0.08;
-            cursorX = (cx + DRAG_TARGET.dx) + (endX - (cx + DRAG_TARGET.dx)) * exitT;
-            cursorY = (cy + DRAG_TARGET.dy) + (endY - (cy + DRAG_TARGET.dy)) * exitT;
+            const t = (dragProgress - 0.85) / 0.15;
+            cursorX = (cx + DRAG_TARGET.dx) + (endX - (cx + DRAG_TARGET.dx)) * t;
+            cursorY = (cy + DRAG_TARGET.dy) + (endY - (cy + DRAG_TARGET.dy)) * t;
             cursorStyle = "default";
           }
 
           return (
             <>
-              {/* Checkerboard where the selection was — visible once dragging starts */}
-              {dragProgress > 0.12 && (
+              {/* Checkerboard where the selection was — visible once grabbing starts */}
+              {dragProgress > 0.25 && (
                 <div
                   className="absolute inset-0 checkerboard"
                   style={{
