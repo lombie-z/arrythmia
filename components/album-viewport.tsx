@@ -196,17 +196,8 @@ export function AlbumViewport() {
             cursorX = (cx + DRAG_TARGET.dx) + (restX - (cx + DRAG_TARGET.dx)) * t;
             cursorY = (cy + DRAG_TARGET.dy) + (restY - (cy + DRAG_TARGET.dy)) * t;
             cursorStyle = "default";
-          } else if (p < 0.82) {
-            cursorX = restX;
-            cursorY = restY;
-            cursorStyle = "default";
-          } else if (p < 0.90) {
-            const t = (p - 0.82) / 0.08;
-            cursorX = restX + (-10 - restX) * t;
-            cursorY = restY;
-            cursorStyle = "default";
           } else {
-            cursorX = -10;
+            cursorX = restX;
             cursorY = restY;
             cursorStyle = "default";
           }
@@ -261,18 +252,20 @@ export function AlbumViewport() {
                   {nestedLayers}
                 </div>
               </div>
-              {/* Blue highlight tint — "select inverse" over remaining image only */}
+              {/* Blue highlight tint — SVG with evenodd cutout for the hole */}
               {showMarchingAnts && (
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    zIndex: 16,
-                    background: "rgba(80, 130, 255, 0.2)",
-                    pointerEvents: "none",
-                    clipPath: `polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${pts.map((pt) => `${snapEdge(pt.x)}% ${snapEdge(pt.y)}%`).join(", ")})`,
-                    clipRule: "evenodd",
-                  }}
-                />
+                <svg
+                  className="absolute inset-0 w-full h-full"
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="none"
+                  style={{ zIndex: 16, pointerEvents: "none" }}
+                >
+                  <path
+                    fillRule="evenodd"
+                    d={`M0,0 L100,0 L100,100 L0,100 Z M${pts[0].x},${pts[0].y} ${pts.slice(1).map((pt) => `L${pt.x},${pt.y}`).join(" ")} Z`}
+                    fill="rgba(80, 130, 255, 0.2)"
+                  />
+                </svg>
               )}
               {/* SVG outline on the moving piece — hide once select inverse starts */}
               {p < 0.60 && (
@@ -292,8 +285,8 @@ export function AlbumViewport() {
                   />
                 </svg>
               )}
-              {/* Cursor */}
-              {p < 0.90 && (
+              {/* Cursor — vanishes when delete happens */}
+              {p < 0.75 && (
                 <DragCursor x={cursorX} y={cursorY} style={cursorStyle} />
               )}
             </>
