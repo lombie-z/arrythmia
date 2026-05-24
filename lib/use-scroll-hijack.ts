@@ -10,10 +10,14 @@ const MOMENTUM_FRICTION = 0.88;
 const MOMENTUM_MIN = 0.4;
 const MOMENTUM_INTERVAL = 40;
 
+const DRAG_AFTER_SELECTION = 3;
+const DRAG_STEPS = 30;
+
 interface ScrollState {
   phase: ScrollPhase;
   selectionIndex: number;
   drawnSegments: number;
+  dragProgress: number;
 }
 
 export function useScrollHijack() {
@@ -21,6 +25,7 @@ export function useScrollHijack() {
     phase: "idle",
     selectionIndex: 0,
     drawnSegments: 0,
+    dragProgress: 0,
   });
 
   const animatingRef = useRef(false);
@@ -44,7 +49,20 @@ export function useScrollHijack() {
   const advanceRaw = useCallback(
     (steps: number) => {
       if (animatingRef.current) return;
-      const { selectionIndex, drawnSegments } = stateRef.current;
+      const { selectionIndex, drawnSegments, phase: curPhase } = stateRef.current;
+
+      if (curPhase === "dragging") {
+        const inc = steps / DRAG_STEPS;
+        setState((s) => {
+          const next = Math.min(s.dragProgress + inc, 1);
+          if (next >= 1) {
+            return { ...s, phase: "idle", dragProgress: 1 };
+          }
+          return { ...s, dragProgress: next };
+        });
+        return;
+      }
+
       if (selectionIndex >= totalSelections) return;
 
       const pointCount = getPointCount(selectionIndex);
@@ -67,12 +85,23 @@ export function useScrollHijack() {
             setState((s) => ({ ...s, phase: "dissolving" }));
             setTimeout(() => {
               const nextSel = selectionIndex + 1;
-              setState({
-                phase: nextSel >= totalSelections ? "complete" : "idle",
-                selectionIndex: nextSel,
-                drawnSegments: 0,
-              });
-              animatingRef.current = false;
+              if (selectionIndex === DRAG_AFTER_SELECTION - 1) {
+                setState({
+                  phase: "dragging",
+                  selectionIndex: nextSel,
+                  drawnSegments: 0,
+                  dragProgress: 0,
+                });
+                animatingRef.current = false;
+              } else {
+                setState({
+                  phase: nextSel >= totalSelections ? "complete" : "idle",
+                  selectionIndex: nextSel,
+                  drawnSegments: 0,
+                  dragProgress: 0,
+                });
+                animatingRef.current = false;
+              }
             }, DISSOLVE_DURATION);
           }, MASK_DURATION);
         }, 50);
@@ -84,7 +113,16 @@ export function useScrollHijack() {
   const retreatRaw = useCallback(
     (steps: number) => {
       if (animatingRef.current) return;
-      const { selectionIndex, drawnSegments } = stateRef.current;
+      const { selectionIndex, drawnSegments, phase: curPhase } = stateRef.current;
+
+      if (curPhase === "dragging") {
+        const dec = steps / DRAG_STEPS;
+        setState((s) => {
+          const next = Math.max(s.dragProgress - dec, 0);
+          return { ...s, dragProgress: next };
+        });
+        return;
+      }
 
       if (drawnSegments > 0) {
         const next = Math.max(drawnSegments - steps, 0);
@@ -208,6 +246,7 @@ export function useScrollHijack() {
         phase: index >= totalSelections ? "complete" : "idle",
         selectionIndex: index,
         drawnSegments: 0,
+        dragProgress: 0,
       });
     },
     [totalSelections],

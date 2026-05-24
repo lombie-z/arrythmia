@@ -12,6 +12,7 @@ import type { AnchorPoint, Layer } from "@/lib/types";
 import { ScrollHint } from "./scroll-hint";
 import { LoadingScreen } from "./loading-screen";
 import { SocialLinks } from "./social-links";
+import { DragCursor } from "./drag-cursor";
 
 const EDGE_SNAP = 2;
 
@@ -52,7 +53,7 @@ function buildNestedLayers(completed: Layer[]): ReactNode {
 }
 
 export function AlbumViewport() {
-  const { phase, selectionIndex, drawnSegments, goToSection } = useScrollHijack();
+  const { phase, selectionIndex, drawnSegments, dragProgress, goToSection } = useScrollHijack();
   const { layers, finalImage } = ALBUM_DATA;
 
   const completedLayers = layers.slice(0, selectionIndex);
@@ -116,6 +117,59 @@ export function AlbumViewport() {
             {nestedLayers}
           </>
         )}
+
+        {/* Drag interlude: checkerboard hole + moving selection + cursor */}
+        {(phase === "dragging" || dragProgress > 0) && (() => {
+          const dragLayer = layers[2];
+          if (!dragLayer) return null;
+          const pts = dragLayer.selection.points;
+          const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+          const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+          const targetX = -cx - 10;
+          const targetY = 100 - cy + 20;
+          const dx = targetX * dragProgress;
+          const dy = targetY * dragProgress;
+          const cursorX = cx + dx;
+          const cursorY = cy + dy;
+
+          return (
+            <>
+              {/* Checkerboard where the selection was */}
+              <div
+                className="absolute inset-0 checkerboard"
+                style={{
+                  clipPath: toClipPath(pts),
+                  zIndex: 9,
+                  opacity: dragProgress > 0 ? 0.6 : 0,
+                  transition: "opacity 200ms",
+                }}
+              />
+              {/* The selection being dragged */}
+              <div
+                className="absolute inset-0"
+                style={{
+                  clipPath: toClipPath(pts),
+                  zIndex: 11,
+                  transform: `translate(${dx}%, ${dy}%)`,
+                }}
+              >
+                <img
+                  src={dragLayer.imageUrl}
+                  alt=""
+                  draggable={false}
+                  className="absolute inset-0 w-full h-full select-none"
+                  style={{
+                    objectFit: "fill",
+                    pointerEvents: "none",
+                    transform: `translate(${-dx}%, ${-dy}%)`,
+                  }}
+                />
+              </div>
+              {/* Pixelated cursor */}
+              <DragCursor x={cursorX} y={cursorY} />
+            </>
+          );
+        })()}
 
         {/* SVG selection outlines */}
         <svg

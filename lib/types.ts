@@ -33,4 +33,5 @@ export type ScrollPhase =
   | "closing"
   | "masking"
   | "dissolving"
+  | "dragging"
   | "complete";
