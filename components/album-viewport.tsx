@@ -338,13 +338,11 @@ export function AlbumViewport() {
                 className="absolute inset-0 checkerboard"
                 style={{ zIndex: 3 }}
               />
-              {/* Previous dragged piece visible on the checkerboard */}
-              {nestedLayers}
-              {/* New image sliding in from right */}
+              {/* New image sliding in from right — under the Fantasia piece */}
               <div
                 className="absolute inset-0"
                 style={{
-                  zIndex: 18,
+                  zIndex: 5,
                   transform: `translateX(${slideX}%)`,
                 }}
               >
@@ -356,7 +354,9 @@ export function AlbumViewport() {
                   style={{ objectFit: "fill", pointerEvents: "none" }}
                 />
               </div>
-              {/* Cursor on top of the sliding image, moving at same speed */}
+              {/* Previous dragged piece on top */}
+              {nestedLayers}
+              {/* Cursor on top of everything */}
               <DragCursor x={cursorX} y={cursorY} style="grabbing" />
             </>
           );
