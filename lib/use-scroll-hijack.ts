@@ -67,8 +67,10 @@ export function useScrollHijack() {
               drawnSegments: 0,
               dragProgress: 0,
             });
-            animatingRef.current = false;
-          }, 1200);
+            setTimeout(() => {
+              animatingRef.current = false;
+            }, 1200);
+          }, 300);
         } else {
           setState((s) => ({ ...s, dragProgress: next }));
         }
