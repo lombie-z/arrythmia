@@ -217,15 +217,12 @@ export function AlbumViewport() {
             cursorX = restX;
             cursorY = restY;
             cursorStyle = "default";
-          } else if (p < 0.95) {
-            // Exit to the right after delete
-            const t = (p - 0.82) / 0.13;
-            cursorX = restX + (110 - restX) * t;
-            cursorY = restY;
-            cursorStyle = "default";
           } else {
-            cursorX = 110;
-            cursorY = restY;
+            // Exit to the right and up, eased
+            const t = Math.min(1, (p - 0.82) / 0.15);
+            const ease = t * t * (3 - 2 * t);
+            cursorX = restX + (110 - restX) * ease;
+            cursorY = restY + (50 - restY) * ease + Math.sin(t * Math.PI) * -8;
             cursorStyle = "default";
           }
 
