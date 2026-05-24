@@ -435,6 +435,7 @@ export const ALBUM_DATA: AlbumSequence = {
             { x: 70, y: 79 },
             { x: 45, y: 79 },
           ],
+          trail: { dx: 0.8, dy: 0.6, count: 30 },
         },
         {
           imageUrl: "/images/collage/person2.webp",
@@ -444,24 +445,7 @@ export const ALBUM_DATA: AlbumSequence = {
             { x: 83, y: 32 },
             { x: 58, y: 32 },
           ],
-        },
-        {
-          imageUrl: "/images/collage/butterfly3.webp",
-          points: [
-            { x: 70, y: 76 },
-            { x: 91, y: 76 },
-            { x: 91, y: 94 },
-            { x: 70, y: 94 },
-          ],
-        },
-        {
-          imageUrl: "/images/collage/person3.webp",
-          points: [
-            { x: 77, y: 0 },
-            { x: 98, y: 0 },
-            { x: 98, y: 20 },
-            { x: 77, y: 20 },
-          ],
+          trail: { dx: 0.7, dy: -0.7, count: 30 },
         },
       ],
     },

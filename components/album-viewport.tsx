@@ -157,41 +157,123 @@ export function AlbumViewport() {
         {/* Collage layer: pieces appear one at a time */}
         {activeLayer?.collageItems && !isDragging && drawnSegments > 0 && (() => {
           const items = activeLayer.collageItems!;
-          const visibleCount = Math.min(drawnSegments, items.length);
+
+          // Map drawnSegments (tick count) to per-item visibility.
+          // Normal items cost 1 tick; trail items cost trail.count ticks.
+          let ticksRemaining = drawnSegments;
+          const itemVisibility: { visible: boolean; trailCopies: number }[] = [];
+          for (const item of items) {
+            if (ticksRemaining <= 0) {
+              itemVisibility.push({ visible: false, trailCopies: 0 });
+            } else if (item.trail) {
+              const copies = Math.min(ticksRemaining, item.trail.count);
+              itemVisibility.push({ visible: true, trailCopies: copies });
+              ticksRemaining -= copies;
+            } else {
+              itemVisibility.push({ visible: true, trailCopies: 0 });
+              ticksRemaining -= 1;
+            }
+          }
+
+          // Find the last visible item for the selection outline
+          let lastVisibleIndex = -1;
+          let lastVisibleTrailCopies = 0;
+          for (let i = items.length - 1; i >= 0; i--) {
+            if (itemVisibility[i].visible) {
+              lastVisibleIndex = i;
+              lastVisibleTrailCopies = itemVisibility[i].trailCopies;
+              break;
+            }
+          }
+
+          let baseZIndex = 30;
+
           return (
             <>
-              {items.slice(0, visibleCount).map((item, i) => (
-                <div
-                  key={`collage-${i}`}
-                  className="absolute inset-0"
-                  style={{
-                    clipPath: toClipPath(item.points),
-                    zIndex: 30 + i,
-                  }}
-                >
-                  <img
-                    src={item.imageUrl}
-                    alt=""
-                    draggable={false}
-                    className="absolute inset-0 w-full h-full select-none"
-                    style={{ objectFit: "fill", pointerEvents: "none" }}
-                  />
-                </div>
-              ))}
-              {/* Selection outline only on the last dropped piece */}
-              {visibleCount > 0 && visibleCount <= items.length && (
-                <svg
-                  className="absolute inset-0 w-full h-full"
-                  style={{ zIndex: 50, pointerEvents: "none" }}
-                >
-                  <SelectionPath
-                    points={items[visibleCount - 1].points}
-                    drawnSegments={items[visibleCount - 1].points.length}
-                    dissolving={false}
-                    playing={false}
-                  />
-                </svg>
-              )}
+              {items.map((item, i) => {
+                const vis = itemVisibility[i];
+                if (!vis.visible) {
+                  // Still need to advance baseZIndex for consistency
+                  baseZIndex += item.trail ? item.trail.count : 1;
+                  return null;
+                }
+
+                if (item.trail) {
+                  // Trail item: render N offset copies
+                  const copies = vis.trailCopies;
+                  const startZ = baseZIndex;
+                  baseZIndex += item.trail.count;
+                  return Array.from({ length: copies }).map((_, ci) => (
+                    <div
+                      key={`collage-${i}-trail-${ci}`}
+                      className="absolute inset-0"
+                      style={{
+                        clipPath: toClipPath(item.points),
+                        zIndex: startZ + ci,
+                        transform: `translate(${ci * item.trail!.dx}%, ${ci * item.trail!.dy}%)`,
+                      }}
+                    >
+                      <img
+                        src={item.imageUrl}
+                        alt=""
+                        draggable={false}
+                        className="absolute inset-0 w-full h-full select-none"
+                        style={{ objectFit: "fill", pointerEvents: "none" }}
+                      />
+                    </div>
+                  ));
+                }
+
+                // Normal item
+                const z = baseZIndex;
+                baseZIndex += 1;
+                return (
+                  <div
+                    key={`collage-${i}`}
+                    className="absolute inset-0"
+                    style={{
+                      clipPath: toClipPath(item.points),
+                      zIndex: z,
+                    }}
+                  >
+                    <img
+                      src={item.imageUrl}
+                      alt=""
+                      draggable={false}
+                      className="absolute inset-0 w-full h-full select-none"
+                      style={{ objectFit: "fill", pointerEvents: "none" }}
+                    />
+                  </div>
+                );
+              })}
+              {/* Selection outline only on the latest stamp */}
+              {lastVisibleIndex >= 0 && (() => {
+                const item = items[lastVisibleIndex];
+                const trail = item.trail;
+                // For trail items, translate the outline to match the last visible copy
+                const trailOffset = trail && lastVisibleTrailCopies > 0
+                  ? { x: (lastVisibleTrailCopies - 1) * trail.dx, y: (lastVisibleTrailCopies - 1) * trail.dy }
+                  : null;
+                return (
+                  <svg
+                    className="absolute inset-0 w-full h-full"
+                    style={{
+                      zIndex: 100,
+                      pointerEvents: "none",
+                      transform: trailOffset
+                        ? `translate(${trailOffset.x}%, ${trailOffset.y}%)`
+                        : undefined,
+                    }}
+                  >
+                    <SelectionPath
+                      points={item.points}
+                      drawnSegments={item.points.length}
+                      dissolving={false}
+                      playing={false}
+                    />
+                  </svg>
+                );
+              })()}
             </>
           );
         })()}

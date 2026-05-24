@@ -45,7 +45,12 @@ export function useScrollHijack() {
     (idx: number) => {
       if (idx >= totalSelections) return 0;
       const layer = ALBUM_DATA.layers[idx];
-      if (layer.collageItems) return layer.collageItems.length;
+      if (layer.collageItems) {
+        return layer.collageItems.reduce(
+          (sum, item) => sum + (item.trail ? item.trail.count : 1),
+          0,
+        );
+      }
       return layer.selection.points.length;
     },
     [totalSelections],
@@ -102,7 +107,21 @@ export function useScrollHijack() {
         }
         animatingRef.current = true;
         next = Math.min(drawnSegments + 1, pointCount);
-        setTimeout(() => { animatingRef.current = false; }, 400);
+
+        // Determine if the current tick lands on a trail item for shorter cooldown
+        const layer = ALBUM_DATA.layers[selectionIndex];
+        const items = layer.collageItems!;
+        let tickAcc = 0;
+        let isTrailTick = false;
+        for (const item of items) {
+          const weight = item.trail ? item.trail.count : 1;
+          if (drawnSegments < tickAcc + weight) {
+            isTrailTick = !!item.trail;
+            break;
+          }
+          tickAcc += weight;
+        }
+        setTimeout(() => { animatingRef.current = false; }, isTrailTick ? 50 : 400);
       } else {
         const progress = drawnSegments / pointCount;
         const remaining = 1 - (drawnSegments + steps) / pointCount;
@@ -171,7 +190,7 @@ export function useScrollHijack() {
         }, 50);
       }
     },
-    [totalSelections, getPointCount],
+    [totalSelections, getPointCount, isCollageLayer],
   );
 
   const retreatRaw = useCallback(
@@ -198,8 +217,34 @@ export function useScrollHijack() {
       }
 
       if (drawnSegments > 0) {
-        const next = Math.max(drawnSegments - steps, 0);
-        setState((s) => ({ ...s, phase: "drawing", drawnSegments: next }));
+        if (isCollageLayer(selectionIndex)) {
+          // Retreat one tick at a time for collage, with cooldown matching the current item
+          momentumRef.current = 0;
+          if (momentumTimer.current) {
+            clearInterval(momentumTimer.current);
+            momentumTimer.current = null;
+          }
+          animatingRef.current = true;
+          const next = Math.max(drawnSegments - 1, 0);
+
+          const layer = ALBUM_DATA.layers[selectionIndex];
+          const items = layer.collageItems!;
+          let tickAcc = 0;
+          let isTrailTick = false;
+          for (const item of items) {
+            const weight = item.trail ? item.trail.count : 1;
+            if ((next > 0 ? next - 1 : 0) < tickAcc + weight) {
+              isTrailTick = !!item.trail;
+              break;
+            }
+            tickAcc += weight;
+          }
+          setTimeout(() => { animatingRef.current = false; }, isTrailTick ? 50 : 400);
+          setState((s) => ({ ...s, phase: "drawing", drawnSegments: next }));
+        } else {
+          const next = Math.max(drawnSegments - steps, 0);
+          setState((s) => ({ ...s, phase: "drawing", drawnSegments: next }));
+        }
       } else if (selectionIndex > 0) {
         const prevIdx = selectionIndex - 1;
         if (prevIdx === DRAG_AFTER_SELECTION - 1) {
@@ -220,7 +265,7 @@ export function useScrollHijack() {
         });
       }
     },
-    [getPointCount],
+    [getPointCount, isCollageLayer],
   );
 
   const startMomentum = useCallback(

@@ -19,6 +19,7 @@ export interface Track {
 export interface CollageItem {
   imageUrl: string;
   points: AnchorPoint[];
+  trail?: { dx: number; dy: number; count: number };
 }
 
 export interface Layer {
