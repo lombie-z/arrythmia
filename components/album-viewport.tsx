@@ -212,9 +212,19 @@ export function AlbumViewport() {
             cursorX = dropX + (restX - dropX) * t;
             cursorY = dropY + (restY - dropY) * t;
             cursorStyle = "default";
-          } else {
-            // Hold at rest
+          } else if (p < 0.82) {
+            // Hold at rest (during ants + highlight)
             cursorX = restX;
+            cursorY = restY;
+            cursorStyle = "default";
+          } else if (p < 0.95) {
+            // Exit to the right after delete
+            const t = (p - 0.82) / 0.13;
+            cursorX = restX + (110 - restX) * t;
+            cursorY = restY;
+            cursorStyle = "default";
+          } else {
+            cursorX = 110;
             cursorY = restY;
             cursorStyle = "default";
           }
@@ -321,7 +331,7 @@ export function AlbumViewport() {
         {isDraggingIn && (() => {
           const p = dragInProgress;
           const slideX = 100 * (1 - p);
-          const cursorX = 50 + slideX;
+          const cursorX = slideX + 5;
           const cursorY = 50;
 
           return (
