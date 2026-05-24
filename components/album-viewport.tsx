@@ -411,7 +411,9 @@ export function AlbumViewport() {
           style={{ zIndex: 50, pointerEvents: "none" }}
         >
           {isComplete && completedLayers.length > 0 && (() => {
-            const last = completedLayers[completedLayers.length - 1];
+            const nonCollage = completedLayers.filter((l) => !l.collageItems);
+            const last = nonCollage[nonCollage.length - 1];
+            if (!last) return null;
             return (
               <SelectionPath
                 key={`done-${last.selection.id}`}
