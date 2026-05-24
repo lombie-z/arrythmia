@@ -246,7 +246,7 @@ export function useScrollHijack() {
             setTimeout(() => {
               setState((s) => ({ ...s, phase: "dissolving" }));
               setTimeout(() => {
-                if (selectionIndex === BSOD_AFTER_SELECTION) {
+                if (selectionIndex === BSOD_AFTER_SELECTION && !bsodSeenRef.current) {
                   setState((s) => ({
                     ...s,
                     phase: "bsod",

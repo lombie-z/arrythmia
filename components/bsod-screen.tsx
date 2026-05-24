@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { PlasmaOverlay } from "./plasma-overlay";
+import { useMemo } from "react";
 
-/* ---------- seeded PRNG for deterministic dead-pixel positions ---------- */
 function mulberry32(seed: number) {
   return () => {
     let t = (seed += 0x6d2b79f5);
@@ -38,51 +36,10 @@ function generateDeadPixels(count: number): DeadPixel[] {
   return pixels;
 }
 
-const BarrelSvgFilter = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" style={{ position: "absolute", width: 0, height: 0 }} aria-hidden="true">
-    <defs>
-      <filter id="bsod-barrel" x="-5%" y="-5%" width="110%" height="110%">
-        <feGaussianBlur in="SourceGraphic" stdDeviation="0.4" result="blur" />
-        <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-      </filter>
-    </defs>
-  </svg>
-);
-
 export function BsodScreen({ progress }: { progress: number }) {
   const eased = Math.pow(progress, 3.5);
   const pct = Math.min(100, Math.round(eased * 102));
   const deadPixels = useMemo(() => generateDeadPixels(40), []);
-
-  // Scroll-driven plasma creeps in partially (up to 0.3 coverage)
-  const scrollCoverage = Math.max(0, (pct - 85) / 15) * 0.3;
-
-  // At 100%, auto-animate plasma from 0.3 → 1.0 over 2s
-  const [autoPlasma, setAutoPlasma] = useState(0);
-  const rafRef = useRef<number>(0);
-  const startedRef = useRef(false);
-
-  useEffect(() => {
-    if (pct >= 100 && !startedRef.current) {
-      startedRef.current = true;
-      const start = performance.now();
-      const animate = (now: number) => {
-        const t = Math.min(1, (now - start) / 2000);
-        const e = t * t * (3 - 2 * t);
-        setAutoPlasma(0.3 + e * 0.7);
-        if (t < 1) rafRef.current = requestAnimationFrame(animate);
-      };
-      rafRef.current = requestAnimationFrame(animate);
-    }
-    if (pct < 100) {
-      startedRef.current = false;
-      setAutoPlasma(0);
-      cancelAnimationFrame(rafRef.current);
-    }
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [pct]);
-
-  const plasmaCoverage = pct >= 100 ? autoPlasma : scrollCoverage;
 
   const fringeStyle = {
     textShadow: "1.5px 0 0 rgba(255,0,0,0.35), -1.5px 0 0 rgba(0,255,255,0.35)",
@@ -90,8 +47,6 @@ export function BsodScreen({ progress }: { progress: number }) {
 
   return (
     <div className="absolute inset-0" style={{ zIndex: 100 }}>
-      <BarrelSvgFilter />
-
       <div
         className="absolute inset-0 flex flex-col justify-center px-[10%]"
         style={{
@@ -130,12 +85,6 @@ export function BsodScreen({ progress }: { progress: number }) {
       <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: "inset 3px 0 8px rgba(255,0,0,0.12), inset -3px 0 8px rgba(0,255,255,0.12), inset 0 3px 8px rgba(255,0,255,0.08), inset 0 -3px 8px rgba(0,255,0,0.08)", zIndex: 4 }} aria-hidden="true" />
 
       <div className="absolute inset-0 pointer-events-none" style={{ borderRadius: "8px", boxShadow: "inset 0 0 60px 10px rgba(0,0,0,0.4)", zIndex: 5 }} aria-hidden="true" />
-
-      {plasmaCoverage > 0 && (
-        <div className="absolute inset-0" style={{ zIndex: 6 }}>
-          <PlasmaOverlay coverage={plasmaCoverage} />
-        </div>
-      )}
     </div>
   );
 }
