@@ -106,13 +106,14 @@ export function useScrollHijack() {
       let next: number;
 
       if (isCollageLayer(selectionIndex)) {
-        const collageSteps = Math.max(1, Math.floor(steps / 8));
+        const collageSteps = Math.max(1, Math.floor(steps / 15));
         next = Math.min(drawnSegments + collageSteps, pointCount);
       } else {
         const progress = drawnSegments / pointCount;
         const remaining = 1 - (drawnSegments + steps) / pointCount;
         const nearEdge = progress < 0.12 || remaining < 0.12;
-        const easedSteps = nearEdge ? Math.max(1, Math.ceil(steps * 0.3)) : steps;
+        let easedSteps = nearEdge ? Math.max(1, Math.ceil(steps * 0.3)) : steps;
+        if (pointCount <= 20) easedSteps = Math.max(1, Math.ceil(easedSteps * 0.25));
         next = Math.min(drawnSegments + easedSteps, pointCount);
       }
 
