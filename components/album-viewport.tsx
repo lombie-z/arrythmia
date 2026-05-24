@@ -162,7 +162,7 @@ export function AlbumViewport() {
           const dy = DRAG_TARGET.dy * dragT;
 
           const showHoleCheckerboard = p > 0.16;
-          const showMarchingAnts = p >= 0.60 && p < 0.82;
+          const showMarchingAnts = p >= 0.60 && p < 0.75;
           const showFullCheckerboard = p >= 0.75;
           const deleteProgress = p >= 0.75 ? 1 : 0;
 
