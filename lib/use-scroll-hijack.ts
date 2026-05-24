@@ -12,12 +12,14 @@ const MOMENTUM_INTERVAL = 40;
 
 const DRAG_AFTER_SELECTION = 4;
 const DRAG_STEPS = 140;
+const DRAG_IN_STEPS = 50;
 
 interface ScrollState {
   phase: ScrollPhase;
   selectionIndex: number;
   drawnSegments: number;
   dragProgress: number;
+  dragInProgress: number;
 }
 
 export function useScrollHijack() {
@@ -26,6 +28,7 @@ export function useScrollHijack() {
     selectionIndex: 0,
     drawnSegments: 0,
     dragProgress: 0,
+    dragInProgress: 0,
   });
 
   const animatingRef = useRef(false);
@@ -51,6 +54,18 @@ export function useScrollHijack() {
       if (animatingRef.current) return;
       const { selectionIndex, drawnSegments, phase: curPhase } = stateRef.current;
 
+      if (curPhase === "dragging-in") {
+        const inc = steps / DRAG_IN_STEPS;
+        const { dragInProgress: curP } = stateRef.current;
+        const nextP = Math.min(curP + inc, 1);
+        if (nextP >= 1) {
+          setState((s) => ({ ...s, phase: "idle", dragInProgress: 1 }));
+        } else {
+          setState((s) => ({ ...s, dragInProgress: nextP }));
+        }
+        return;
+      }
+
       if (curPhase === "dragging") {
         const inc = steps / DRAG_STEPS;
         const { dragProgress: curDrag, selectionIndex: curSel } = stateRef.current;
@@ -60,17 +75,15 @@ export function useScrollHijack() {
           setState((s) => ({ ...s, dragProgress: 1 }));
           animatingRef.current = true;
           setTimeout(() => {
-            const nextSel = curSel + 1;
-            setState({
-              phase: nextSel >= totalSelections ? "complete" : "idle",
-              selectionIndex: nextSel,
+            setState((s) => ({
+              ...s,
+              phase: "dragging-in",
+              selectionIndex: curSel + 1,
               drawnSegments: 0,
-              dragProgress: 0,
-            });
-            setTimeout(() => {
-              animatingRef.current = false;
-            }, 1200);
-          }, 300);
+              dragInProgress: 0,
+            }));
+            animatingRef.current = false;
+          }, 400);
         } else {
           setState((s) => ({ ...s, dragProgress: next }));
         }
@@ -127,6 +140,14 @@ export function useScrollHijack() {
     (steps: number) => {
       if (animatingRef.current) return;
       const { selectionIndex, drawnSegments, phase: curPhase } = stateRef.current;
+
+      if (curPhase === "dragging-in") {
+        const { dragInProgress: curP } = stateRef.current;
+        const dec = steps / DRAG_IN_STEPS;
+        const nextP = Math.max(curP - dec, 0);
+        setState((s) => ({ ...s, dragInProgress: nextP }));
+        return;
+      }
 
       if (curPhase === "dragging") {
         const { dragProgress: curDrag } = stateRef.current;
@@ -269,6 +290,7 @@ export function useScrollHijack() {
         selectionIndex: index,
         drawnSegments: 0,
         dragProgress: 0,
+        dragInProgress: 0,
       });
     },
     [totalSelections],

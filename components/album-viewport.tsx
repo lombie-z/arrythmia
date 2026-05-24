@@ -66,7 +66,7 @@ function buildNestedLayers(
 }
 
 export function AlbumViewport() {
-  const { phase, selectionIndex, drawnSegments, dragProgress, goToSection } = useScrollHijack();
+  const { phase, selectionIndex, drawnSegments, dragProgress, dragInProgress, goToSection } = useScrollHijack();
   const { layers, finalImage } = ALBUM_DATA;
 
   const completedLayers = layers.slice(0, selectionIndex);
@@ -84,6 +84,7 @@ export function AlbumViewport() {
   const [loaded, setLoaded] = useState(false);
   const onLoadDone = useCallback(() => setLoaded(true), []);
   const isDragging = phase === "dragging";
+  const isDraggingIn = phase === "dragging-in";
   const dragDone = selectionIndex > DRAG_LAYER_INDEX;
   const nestedLayers = buildNestedLayers(
     completedLayers,
@@ -312,6 +313,44 @@ export function AlbumViewport() {
               )}
               {/* Cursor — stays until next scene */}
               <DragCursor x={cursorX} y={cursorY} style={cursorStyle} />
+            </>
+          );
+        })()}
+
+        {/* Drag-in: new image slides in from right onto checkerboard */}
+        {isDraggingIn && (() => {
+          const p = dragInProgress;
+          const slideX = 100 * (1 - p);
+          const cursorX = 85 - 35 * p;
+          const cursorY = 50;
+
+          return (
+            <>
+              {/* Checkerboard base (from previous drag) */}
+              <div
+                className="absolute inset-0 checkerboard"
+                style={{ zIndex: 3 }}
+              />
+              {/* New image sliding in from right */}
+              <div
+                className="absolute inset-0"
+                style={{
+                  zIndex: 18,
+                  transform: `translateX(${slideX}%)`,
+                }}
+              >
+                <img
+                  src={currentImage}
+                  alt=""
+                  draggable={false}
+                  className="absolute inset-0 w-full h-full select-none"
+                  style={{ objectFit: "fill", pointerEvents: "none" }}
+                />
+              </div>
+              {/* Cursor carrying the image */}
+              {p < 0.95 && (
+                <DragCursor x={cursorX} y={cursorY} style={p > 0.05 ? "grabbing" : "default"} />
+              )}
             </>
           );
         })()}
