@@ -100,15 +100,6 @@ export function useScrollHijack() {
       let next: number;
 
       if (isCollageLayer(selectionIndex)) {
-        momentumRef.current = 0;
-        if (momentumTimer.current) {
-          clearInterval(momentumTimer.current);
-          momentumTimer.current = null;
-        }
-        animatingRef.current = true;
-        next = Math.min(drawnSegments + 1, pointCount);
-
-        // Determine if the current tick lands on a trail item for shorter cooldown
         const layer = ALBUM_DATA.layers[selectionIndex];
         const items = layer.collageItems!;
         let tickAcc = 0;
@@ -121,7 +112,18 @@ export function useScrollHijack() {
           }
           tickAcc += weight;
         }
-        setTimeout(() => { animatingRef.current = false; }, isTrailTick ? 50 : 400);
+
+        if (!isTrailTick) {
+          momentumRef.current = 0;
+          if (momentumTimer.current) {
+            clearInterval(momentumTimer.current);
+            momentumTimer.current = null;
+          }
+        }
+
+        animatingRef.current = true;
+        next = Math.min(drawnSegments + 1, pointCount);
+        setTimeout(() => { animatingRef.current = false; }, isTrailTick ? 30 : 400);
       } else {
         const progress = drawnSegments / pointCount;
         const remaining = 1 - (drawnSegments + steps) / pointCount;
