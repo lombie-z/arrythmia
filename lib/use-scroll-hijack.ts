@@ -107,6 +107,11 @@ export function useScrollHijack() {
         if (next >= 1) {
           setState((s) => ({ ...s, bsodProgress: 1 }));
           animatingRef.current = true;
+          momentumRef.current = 0;
+          if (momentumTimer.current) {
+            clearInterval(momentumTimer.current);
+            momentumTimer.current = null;
+          }
           setTimeout(() => {
             const nextSel = curSel + 1;
             setState({
