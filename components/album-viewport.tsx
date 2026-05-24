@@ -36,6 +36,7 @@ function buildNestedLayers(
 
   for (let i = 0; i < completed.length; i++) {
     const layer = completed[i];
+    if (layer.collageItems) continue;
     const isDragged = i === draggedIndex;
 
     nested = (
