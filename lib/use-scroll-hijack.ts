@@ -156,11 +156,13 @@ export function useScrollHijack() {
         next = Math.min(drawnSegments + 1, pointCount);
         setTimeout(() => { animatingRef.current = false; }, isTrailTick ? 30 : 400);
       } else {
+        const TARGET_POINTS = 50;
+        const weight = Math.max(0.2, pointCount / TARGET_POINTS);
+        const normalizedSteps = Math.max(1, Math.round(steps * weight));
         const progress = drawnSegments / pointCount;
-        const remaining = 1 - (drawnSegments + steps) / pointCount;
+        const remaining = 1 - (drawnSegments + normalizedSteps) / pointCount;
         const nearEdge = progress < 0.12 || remaining < 0.12;
-        let easedSteps = nearEdge ? Math.max(1, Math.ceil(steps * 0.3)) : steps;
-        if (pointCount <= 20) easedSteps = Math.max(1, Math.ceil(easedSteps * 0.25));
+        const easedSteps = nearEdge ? Math.max(1, Math.ceil(normalizedSteps * 0.3)) : normalizedSteps;
         next = Math.min(drawnSegments + easedSteps, pointCount);
       }
 

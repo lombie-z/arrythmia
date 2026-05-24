@@ -1,13 +1,12 @@
 "use client";
 
 export function BsodScreen({ progress }: { progress: number }) {
-  const pct = Math.min(100, Math.round(progress * 125));
-  const flickering = pct >= 90 && progress < 0.95;
-  const fadingOut = progress > 0.9;
+  const pct = Math.min(100, Math.round(progress * 110));
+  const fadingOut = progress > 0.92;
 
   return (
     <div
-      className={`absolute inset-0 flex flex-col justify-center px-[10%] ${flickering ? "bsod-flicker" : ""}`}
+      className="absolute inset-0 flex flex-col justify-center px-[10%]"
       style={{
         zIndex: 100,
         background: "#0000aa",
