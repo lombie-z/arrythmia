@@ -250,10 +250,10 @@ export function AlbumViewport() {
             cursorY = dropY;
             cursorStyle = "grab";
           } else {
-            const t = Math.min(1, (p - 0.76) / 0.14);
+            const t = Math.min(1, (p - 0.76) / 0.10);
             const ease = t * t * (3 - 2 * t);
-            cursorX = dropX + (110 - dropX) * ease;
-            cursorY = dropY + (50 - dropY) * ease + Math.sin(t * Math.PI) * -8;
+            cursorX = dropX + (-10) * ease;
+            cursorY = dropY;
             cursorStyle = "default";
           }
 
