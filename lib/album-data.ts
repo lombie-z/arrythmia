@@ -354,10 +354,10 @@ export const ALBUM_DATA: AlbumSequence = {
         {
           imageUrl: "/images/collage/sign.webp",
           points: [
-            { x: 10, y: 20 },
-            { x: 30, y: 18 },
-            { x: 32, y: 60 },
-            { x: 8, y: 62 },
+            { x: 6, y: 17 },
+            { x: 34, y: 17 },
+            { x: 34, y: 63 },
+            { x: 6, y: 63 },
           ],
         },
         {
