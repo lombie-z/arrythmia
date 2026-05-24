@@ -133,11 +133,20 @@ export function useScrollHijack() {
       const { selectionIndex, drawnSegments, phase: curPhase } = stateRef.current;
 
       if (curPhase === "dragging") {
+        const { dragProgress: curDrag } = stateRef.current;
         const dec = steps / DRAG_STEPS;
-        setState((s) => {
-          const next = Math.max(s.dragProgress - dec, 0);
-          return { ...s, dragProgress: next };
-        });
+        const next = Math.max(curDrag - dec, 0);
+        if (next <= 0) {
+          const pointCount = getPointCount(selectionIndex);
+          setState((s) => ({
+            ...s,
+            phase: "idle",
+            drawnSegments: pointCount,
+            dragProgress: 0,
+          }));
+        } else {
+          setState((s) => ({ ...s, dragProgress: next }));
+        }
         return;
       }
 

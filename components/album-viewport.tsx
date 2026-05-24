@@ -15,6 +15,8 @@ import { SocialLinks } from "./social-links";
 import { DragCursor } from "./drag-cursor";
 
 const EDGE_SNAP = 2;
+const DRAG_LAYER_INDEX = 3;
+const DRAG_TARGET = { dx: -30, dy: 30 };
 
 function snapEdge(v: number): number {
   if (v <= EDGE_SNAP) return 0;
@@ -26,16 +28,28 @@ function toClipPath(points: AnchorPoint[]): string {
   return `polygon(${points.map((p) => `${snapEdge(p.x)}% ${snapEdge(p.y)}%`).join(", ")})`;
 }
 
-function buildNestedLayers(completed: Layer[]): ReactNode {
+function offsetPoints(points: AnchorPoint[], dx: number, dy: number): AnchorPoint[] {
+  return points.map((p) => ({ x: p.x + dx, y: p.y + dy }));
+}
+
+function buildNestedLayers(
+  completed: Layer[],
+  draggedIndex?: number,
+): ReactNode {
   let nested: ReactNode = null;
 
   for (let i = 0; i < completed.length; i++) {
     const layer = completed[i];
+    const isDragged = i === draggedIndex;
+    const pts = isDragged
+      ? offsetPoints(layer.selection.points, DRAG_TARGET.dx, DRAG_TARGET.dy)
+      : layer.selection.points;
+
     nested = (
       <div
         key={layer.selection.id}
         className="absolute inset-0"
-        style={{ clipPath: toClipPath(layer.selection.points), zIndex: 10 }}
+        style={{ clipPath: toClipPath(pts), zIndex: 10 }}
       >
         <img
           src={layer.imageUrl}
@@ -70,7 +84,12 @@ export function AlbumViewport() {
 
   const [loaded, setLoaded] = useState(false);
   const onLoadDone = useCallback(() => setLoaded(true), []);
-  const nestedLayers = buildNestedLayers(completedLayers);
+  const isDragging = phase === "dragging";
+  const dragDone = selectionIndex > DRAG_LAYER_INDEX;
+  const nestedLayers = buildNestedLayers(
+    completedLayers,
+    dragDone ? DRAG_LAYER_INDEX : undefined,
+  );
 
   const skipForward = useCallback(() => {
     goToSection(Math.min(selectionIndex + 1, layers.length));
@@ -119,14 +138,12 @@ export function AlbumViewport() {
         )}
 
         {/* Drag interlude: checkerboard hole + moving selection piece + cursor */}
-        {phase === "dragging" && activeLayer && (() => {
+        {isDragging && activeLayer && (() => {
           const pts = activeLayer.selection.points;
           const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
           const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
-          const targetX = -cx - 10;
-          const targetY = 100 - cy + 20;
-          const dx = targetX * dragProgress;
-          const dy = targetY * dragProgress;
+          const dx = DRAG_TARGET.dx * dragProgress;
+          const dy = DRAG_TARGET.dy * dragProgress;
           const cursorX = cx + dx;
           const cursorY = cy + dy;
 
@@ -138,28 +155,31 @@ export function AlbumViewport() {
                 style={{
                   clipPath: toClipPath(pts),
                   zIndex: 15,
+                  opacity: Math.min(1, dragProgress * 5),
                 }}
               />
-              {/* The selected piece being dragged away */}
+              {/* The selected piece being dragged — clip + image move together */}
               <div
                 className="absolute inset-0"
                 style={{
-                  clipPath: toClipPath(pts),
                   zIndex: 20,
                   transform: `translate(${dx}%, ${dy}%)`,
                 }}
               >
-                <img
-                  src={currentImage}
-                  alt=""
-                  draggable={false}
-                  className="absolute inset-0 w-full h-full select-none"
-                  style={{
-                    objectFit: "fill",
-                    pointerEvents: "none",
-                    transform: `translate(${-dx}%, ${-dy}%)`,
-                  }}
-                />
+                <div
+                  className="absolute inset-0"
+                  style={{ clipPath: toClipPath(pts) }}
+                >
+                  <img
+                    src={currentImage}
+                    alt=""
+                    draggable={false}
+                    className="absolute inset-0 w-full h-full select-none"
+                    style={{ objectFit: "fill", pointerEvents: "none" }}
+                  />
+                  {/* Include earlier selections inside the moving piece */}
+                  {nestedLayers}
+                </div>
               </div>
               {/* SVG outline moving with the piece */}
               <svg
@@ -201,7 +221,7 @@ export function AlbumViewport() {
             );
           })()}
 
-          {activeLayer && drawnSegments > 0 && (
+          {activeLayer && drawnSegments > 0 && !isDragging && (
             <SelectionPath
               points={activeLayer.selection.points}
               drawnSegments={drawnSegments}
