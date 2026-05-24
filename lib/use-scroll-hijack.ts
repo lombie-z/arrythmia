@@ -64,18 +64,6 @@ export function useScrollHijack() {
       if (animatingRef.current) return;
       const { selectionIndex, drawnSegments, phase: curPhase } = stateRef.current;
 
-      if (curPhase === "dragging-in") {
-        const inc = steps / DRAG_IN_STEPS;
-        const { dragInProgress: curP } = stateRef.current;
-        const nextP = Math.min(curP + inc, 1);
-        if (nextP >= 1) {
-          setState((s) => ({ ...s, phase: "idle", dragInProgress: 1 }));
-        } else {
-          setState((s) => ({ ...s, dragInProgress: nextP }));
-        }
-        return;
-      }
-
       if (curPhase === "dragging") {
         const inc = steps / DRAG_STEPS;
         const { dragProgress: curDrag, selectionIndex: curSel } = stateRef.current;
@@ -160,24 +148,6 @@ export function useScrollHijack() {
       if (animatingRef.current) return;
       const { selectionIndex, drawnSegments, phase: curPhase } = stateRef.current;
 
-      if (curPhase === "dragging-in") {
-        const { dragInProgress: curP } = stateRef.current;
-        const dec = steps / DRAG_IN_STEPS;
-        const nextP = Math.max(curP - dec, 0);
-        if (nextP <= 0) {
-          setState((s) => ({
-            ...s,
-            phase: "dragging",
-            selectionIndex: selectionIndex - 1,
-            dragProgress: 1,
-            dragInProgress: 0,
-          }));
-        } else {
-          setState((s) => ({ ...s, dragInProgress: nextP }));
-        }
-        return;
-      }
-
       if (curPhase === "dragging") {
         const { dragProgress: curDrag } = stateRef.current;
         const dec = steps / DRAG_STEPS;
@@ -200,10 +170,21 @@ export function useScrollHijack() {
         const next = Math.max(drawnSegments - steps, 0);
         setState((s) => ({ ...s, phase: "drawing", drawnSegments: next }));
       } else if (selectionIndex > 0) {
-        const prevPointCount = getPointCount(selectionIndex - 1);
+        const prevIdx = selectionIndex - 1;
+        if (prevIdx === DRAG_AFTER_SELECTION - 1) {
+          setState((s) => ({
+            ...s,
+            phase: "dragging",
+            selectionIndex: prevIdx,
+            drawnSegments: getPointCount(prevIdx),
+            dragProgress: 1,
+          }));
+          return;
+        }
+        const prevPointCount = getPointCount(prevIdx);
         setState({
           phase: "idle",
-          selectionIndex: selectionIndex - 1,
+          selectionIndex: prevIdx,
           drawnSegments: prevPointCount,
         });
       }
