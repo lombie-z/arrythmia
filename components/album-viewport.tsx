@@ -157,14 +157,14 @@ export function AlbumViewport() {
            * 0.90-1.00  Hold, then transition
            */
 
-          const dragT = Math.max(0, Math.min(1, (p - 0.16) / 0.36));
+          const dragT = Math.max(0, Math.min(1, (p - 0.20) / 0.30));
           const dx = DRAG_TARGET.dx * dragT;
           const dy = DRAG_TARGET.dy * dragT;
 
-          const showHoleCheckerboard = p > 0.16;
-          const showMarchingAnts = p >= 0.60 && p < 0.75;
-          const showFullCheckerboard = p >= 0.75;
-          const deleteProgress = p >= 0.75 ? 1 : 0;
+          const showHoleCheckerboard = p > 0.20;
+          const showMarchingAnts = p >= 0.66 && p < 0.82;
+          const showFullCheckerboard = p >= 0.82;
+          const deleteProgress = p >= 0.82 ? 1 : 0;
 
           // Cursor starts from last SVG anchor, moves right into selection to grab
           const lastPt = pts[pts.length - 1];
@@ -179,29 +179,40 @@ export function AlbumViewport() {
           let cursorX: number, cursorY: number;
           let cursorStyle: "default" | "grab" | "grabbing";
 
-          if (p < 0.12) {
-            const t = p / 0.12;
+          if (p < 0.04) {
+            // Hold still at start
+            cursorX = startX;
+            cursorY = startY;
+            cursorStyle = "default";
+          } else if (p < 0.14) {
+            // Move into selection
+            const t = (p - 0.04) / 0.10;
             cursorX = startX + (grabX - startX) * t;
             cursorY = startY + (grabY - startY) * t;
             cursorStyle = "default";
-          } else if (p < 0.16) {
+          } else if (p < 0.20) {
+            // Hold with grab cursor
             cursorX = grabX;
             cursorY = grabY;
             cursorStyle = "grab";
-          } else if (p < 0.52) {
+          } else if (p < 0.50) {
+            // Drag
             cursorX = grabX + dx;
             cursorY = grabY + dy;
             cursorStyle = "grabbing";
-          } else if (p < 0.55) {
+          } else if (p < 0.56) {
+            // Hold after release
             cursorX = dropX;
             cursorY = dropY;
             cursorStyle = "grab";
-          } else if (p < 0.60) {
-            const t = (p - 0.55) / 0.05;
+          } else if (p < 0.62) {
+            // Move outward
+            const t = (p - 0.56) / 0.06;
             cursorX = dropX + (restX - dropX) * t;
             cursorY = dropY + (restY - dropY) * t;
             cursorStyle = "default";
           } else {
+            // Hold at rest
             cursorX = restX;
             cursorY = restY;
             cursorStyle = "default";
@@ -215,26 +226,14 @@ export function AlbumViewport() {
 
           return (
             <>
-              {/* Full-screen checkerboard "delete" — fades in behind everything */}
-              {showFullCheckerboard && (
-                <div
-                  className="absolute inset-0 checkerboard"
-                  style={{
-                    zIndex: 3,
-                    opacity: deleteProgress,
-                  }}
-                />
-              )}
-              {/* Checkerboard in the original selection hole */}
-              {showHoleCheckerboard && (
-                <div
-                  className="absolute inset-0 checkerboard"
-                  style={{
-                    clipPath: toClipPath(pts),
-                    zIndex: 15,
-                  }}
-                />
-              )}
+              {/* Single checkerboard — starts clipped to hole, expands to full screen on delete */}
+              <div
+                className="absolute inset-0 checkerboard"
+                style={{
+                  zIndex: showFullCheckerboard ? 3 : 15,
+                  clipPath: showFullCheckerboard ? undefined : (showHoleCheckerboard ? toClipPath(pts) : "polygon(0 0, 0 0, 0 0)"),
+                }}
+              />
               {/* The selected piece — moves during drag phase */}
               <div
                 className="absolute inset-0"
