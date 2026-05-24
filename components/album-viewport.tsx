@@ -321,7 +321,7 @@ export function AlbumViewport() {
         {isDraggingIn && (() => {
           const p = dragInProgress;
           const slideX = 100 * (1 - p);
-          const cursorX = 85 - 35 * p;
+          const cursorX = 50 + slideX;
           const cursorY = 50;
 
           return (
@@ -347,10 +347,8 @@ export function AlbumViewport() {
                   style={{ objectFit: "fill", pointerEvents: "none" }}
                 />
               </div>
-              {/* Cursor carrying the image */}
-              {p < 0.95 && (
-                <DragCursor x={cursorX} y={cursorY} style={p > 0.05 ? "grabbing" : "default"} />
-              )}
+              {/* Cursor on top of the sliding image, moving at same speed */}
+              <DragCursor x={cursorX} y={cursorY} style="grabbing" />
             </>
           );
         })()}
