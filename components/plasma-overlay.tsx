@@ -184,10 +184,9 @@ function PlasmaQuad({ coverage }: { coverage: number }) {
   useFrame((state, delta) => {
     uniforms.u_time.value += delta;
 
-    // Smooth lerp toward target coverage (frame-rate independent)
-    const lerpSpeed = 1.0 - 0.001 ** delta;
+    // Smooth lerp toward target coverage
     uniforms.u_coverage.value +=
-      (coverage - uniforms.u_coverage.value) * lerpSpeed;
+      (coverage - uniforms.u_coverage.value) * Math.min(1, delta * 3);
 
     // Keep resolution in sync
     const size = state.gl.getDrawingBufferSize(sizeVec.current);

@@ -36,6 +36,7 @@ export function useScrollHijack() {
   });
 
   const animatingRef = useRef(false);
+  const bsodSeenRef = useRef(false);
   const touchStartRef = useRef(0);
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -127,6 +128,7 @@ export function useScrollHijack() {
           setState((s) => ({ ...s, bsodProgress: 1 }));
           animatingRef.current = true;
           momentumRef.current = 0;
+          bsodSeenRef.current = true;
           if (momentumTimer.current) {
             clearInterval(momentumTimer.current);
             momentumTimer.current = null;
@@ -141,7 +143,7 @@ export function useScrollHijack() {
               bsodProgress: 0,
             });
             animatingRef.current = false;
-          }, 2500);
+          }, 2800);
         } else {
           setState((s) => ({ ...s, bsodProgress: next }));
         }
@@ -187,7 +189,7 @@ export function useScrollHijack() {
                 setTimeout(() => {
                   setState((s) => ({ ...s, phase: "dissolving" }));
                   setTimeout(() => {
-                    if (selectionIndex === BSOD_AFTER_SELECTION) {
+                    if (selectionIndex === BSOD_AFTER_SELECTION && !bsodSeenRef.current) {
                       setState((s) => ({
                         ...s,
                         phase: "bsod",
@@ -416,7 +418,7 @@ export function useScrollHijack() {
           }));
           return;
         }
-        if (prevIdx === BSOD_AFTER_SELECTION) {
+        if (prevIdx === BSOD_AFTER_SELECTION && !bsodSeenRef.current) {
           setState((s) => ({
             ...s,
             phase: "bsod",
