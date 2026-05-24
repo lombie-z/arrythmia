@@ -207,30 +207,70 @@ export function AlbumViewport() {
             }
           }
 
-          let baseZIndex = 30;
+          // Build a flat render list ordered by stamp sequence for correct z-ordering
+          const renderList: { itemIndex: number; copyIndex: number }[] = [];
+          for (let idx = 0; idx < items.length; idx++) {
+            const vis = itemVisibility[idx];
+            if (!vis.visible) continue;
+            if (items[idx].trail) {
+              for (let ci = 0; ci < vis.trailCopies; ci++) {
+                renderList.push({ itemIndex: idx, copyIndex: ci });
+              }
+            } else {
+              renderList.push({ itemIndex: idx, copyIndex: -1 });
+            }
+          }
+          // Sort by stamp order: interleaved trails should alternate
+          // The visibility mapping already handles ordering via round-robin,
+          // so we just sort by copyIndex then itemIndex for interleaved z-order
+          renderList.sort((a, b) => {
+            if (a.copyIndex === -1 && b.copyIndex === -1) return a.itemIndex - b.itemIndex;
+            if (a.copyIndex === -1) return -1;
+            if (b.copyIndex === -1) return -1;
+            if (a.copyIndex !== b.copyIndex) return a.copyIndex - b.copyIndex;
+            return a.itemIndex - b.itemIndex;
+          });
 
           return (
             <>
-              {items.map((item, i) => {
-                const vis = itemVisibility[i];
-                if (!vis.visible) {
-                  // Still need to advance baseZIndex for consistency
-                  baseZIndex += item.trail ? item.trail.count : 1;
-                  return null;
-                }
+              {renderList.map(({ itemIndex: idx, copyIndex: ci }, renderIdx) => {
+                const item = items[idx];
 
-                if (item.trail) {
-                  // Trail item: render N offset copies
-                  const copies = vis.trailCopies;
-                  const startZ = baseZIndex;
-                  baseZIndex += item.trail.count;
-                  return Array.from({ length: copies }).map((_, ci) => (
+                if (ci === -1) {
+                  // Normal item
+                  return (
                     <div
-                      key={`collage-${i}-trail-${ci}`}
+                      key={`collage-${idx}`}
                       className="absolute inset-0"
                       style={{
                         clipPath: toClipPath(item.points),
-                        zIndex: startZ + ci,
+                        zIndex: 30 + renderIdx,
+                      }}
+                    >
+                      <img
+                        src={item.imageUrl}
+                        alt=""
+                        draggable={false}
+                        className="absolute inset-0 w-full h-full select-none"
+                        style={{ objectFit: "fill", pointerEvents: "none" }}
+                      />
+                    </div>
+                  );
+                }
+
+                // Trail copy with progressive distortion
+                const progress = ci / (item.trail!.count - 1);
+                const blur = progress * 2.5;
+                const hueShift = progress * 40;
+                const contrast = 1 + progress * 0.6;
+                return (
+                    <div
+                      key={`collage-${idx}-trail-${ci}`}
+                      className="absolute inset-0"
+                      style={{
+                        clipPath: toClipPath(item.points),
+                        zIndex: 30 + renderIdx,
+                        filter: ci > 0 ? `blur(${blur}px) hue-rotate(${hueShift}deg) contrast(${contrast})` : undefined,
                         transform: `translate(${ci * item.trail!.dx}%, ${ci * item.trail!.dy}%)`,
                       }}
                     >
@@ -242,29 +282,6 @@ export function AlbumViewport() {
                         style={{ objectFit: "fill", pointerEvents: "none" }}
                       />
                     </div>
-                  ));
-                }
-
-                // Normal item
-                const z = baseZIndex;
-                baseZIndex += 1;
-                return (
-                  <div
-                    key={`collage-${i}`}
-                    className="absolute inset-0"
-                    style={{
-                      clipPath: toClipPath(item.points),
-                      zIndex: z,
-                    }}
-                  >
-                    <img
-                      src={item.imageUrl}
-                      alt=""
-                      draggable={false}
-                      className="absolute inset-0 w-full h-full select-none"
-                      style={{ objectFit: "fill", pointerEvents: "none" }}
-                    />
-                  </div>
                 );
               })}
               {/* Selection outline only on the latest stamp */}
