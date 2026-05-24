@@ -166,35 +166,40 @@ export function AlbumViewport() {
           const showFullCheckerboard = p >= 0.75;
           const deleteProgress = p >= 0.75 ? 1 : 0;
 
-          // Cursor
-          const startX = 105;
-          const startY = -5;
-          const restX = cx + DRAG_TARGET.dx + 20;
-          const restY = cy + DRAG_TARGET.dy - 5;
+          // Natural cursor path: just outside right edge → inside → drag → slight outward
+          const rightEdge = 67.7;
+          const startX = rightEdge + 5;
+          const startY = cy;
+          const grabX = rightEdge - 5;
+          const grabY = cy;
+          const dropX = grabX + DRAG_TARGET.dx;
+          const dropY = grabY + DRAG_TARGET.dy;
+          const restX = dropX + 8;
+          const restY = dropY - 5;
           let cursorX: number, cursorY: number;
           let cursorStyle: "default" | "grab" | "grabbing";
 
           if (p < 0.12) {
             const t = p / 0.12;
-            cursorX = startX + (cx - startX) * t;
-            cursorY = startY + (cy - startY) * t;
+            cursorX = startX + (grabX - startX) * t;
+            cursorY = startY + (grabY - startY) * t;
             cursorStyle = "default";
           } else if (p < 0.16) {
-            cursorX = cx;
-            cursorY = cy;
+            cursorX = grabX;
+            cursorY = grabY;
             cursorStyle = "grab";
           } else if (p < 0.52) {
-            cursorX = cx + dx;
-            cursorY = cy + dy;
+            cursorX = grabX + dx;
+            cursorY = grabY + dy;
             cursorStyle = "grabbing";
           } else if (p < 0.55) {
-            cursorX = cx + DRAG_TARGET.dx;
-            cursorY = cy + DRAG_TARGET.dy;
+            cursorX = dropX;
+            cursorY = dropY;
             cursorStyle = "grab";
           } else if (p < 0.60) {
             const t = (p - 0.55) / 0.05;
-            cursorX = (cx + DRAG_TARGET.dx) + (restX - (cx + DRAG_TARGET.dx)) * t;
-            cursorY = (cy + DRAG_TARGET.dy) + (restY - (cy + DRAG_TARGET.dy)) * t;
+            cursorX = dropX + (restX - dropX) * t;
+            cursorY = dropY + (restY - dropY) * t;
             cursorStyle = "default";
           } else {
             cursorX = restX;
