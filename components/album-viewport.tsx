@@ -13,6 +13,7 @@ import { ScrollHint } from "./scroll-hint";
 import { LoadingScreen } from "./loading-screen";
 import { SocialLinks } from "./social-links";
 import { DragCursor } from "./drag-cursor";
+import { BsodScreen } from "./bsod-screen";
 
 const EDGE_SNAP = 1;
 const DRAG_LAYER_INDEX = 3;
@@ -67,7 +68,7 @@ function buildNestedLayers(
 }
 
 export function AlbumViewport() {
-  const { phase, selectionIndex, drawnSegments, dragProgress, goToSection } = useScrollHijack();
+  const { phase, selectionIndex, drawnSegments, dragProgress, bsodProgress, goToSection } = useScrollHijack();
   const { layers, finalImage } = ALBUM_DATA;
 
   const completedLayers = layers.slice(0, selectionIndex);
@@ -426,6 +427,9 @@ export function AlbumViewport() {
             </>
           );
         })()}
+
+        {/* BSOD transition between sections 7 and 8 */}
+        {phase === "bsod" && <BsodScreen progress={bsodProgress} />}
 
         {/* SVG selection outlines */}
         <svg

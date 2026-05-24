@@ -42,4 +42,5 @@ export type ScrollPhase =
   | "dissolving"
   | "dragging"
   | "dragging-in"
+  | "bsod"
   | "complete";

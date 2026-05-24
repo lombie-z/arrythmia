@@ -13,6 +13,8 @@ const MOMENTUM_INTERVAL = 40;
 const DRAG_AFTER_SELECTION = 4;
 const DRAG_STEPS = 60;
 const DRAG_IN_STEPS = 50;
+const BSOD_AFTER_SELECTION = 6;
+const BSOD_STEPS = 40;
 
 interface ScrollState {
   phase: ScrollPhase;
@@ -20,6 +22,7 @@ interface ScrollState {
   drawnSegments: number;
   dragProgress: number;
   dragInProgress: number;
+  bsodProgress: number;
 }
 
 export function useScrollHijack() {
@@ -29,6 +32,7 @@ export function useScrollHijack() {
     drawnSegments: 0,
     dragProgress: 0,
     dragInProgress: 0,
+    bsodProgress: 0,
   });
 
   const animatingRef = useRef(false);
@@ -85,11 +89,38 @@ export function useScrollHijack() {
               drawnSegments: 0,
               dragProgress: 0,
               dragInProgress: 0,
+              bsodProgress: 0,
             });
             animatingRef.current = false;
           }, 300);
         } else {
           setState((s) => ({ ...s, dragProgress: next }));
+        }
+        return;
+      }
+
+      if (curPhase === "bsod") {
+        const inc = steps / BSOD_STEPS;
+        const { bsodProgress: curBsod, selectionIndex: curSel } = stateRef.current;
+        const next = Math.min(curBsod + inc, 1);
+
+        if (next >= 1) {
+          setState((s) => ({ ...s, bsodProgress: 1 }));
+          animatingRef.current = true;
+          setTimeout(() => {
+            const nextSel = curSel + 1;
+            setState({
+              phase: nextSel >= totalSelections ? "complete" : "idle",
+              selectionIndex: nextSel,
+              drawnSegments: 0,
+              dragProgress: 0,
+              dragInProgress: 0,
+              bsodProgress: 0,
+            });
+            animatingRef.current = false;
+          }, 200);
+        } else {
+          setState((s) => ({ ...s, bsodProgress: next }));
         }
         return;
       }
@@ -146,14 +177,25 @@ export function useScrollHijack() {
             setTimeout(() => {
               setState((s) => ({ ...s, phase: "dissolving" }));
               setTimeout(() => {
-                const nextSel = selectionIndex + 1;
-                setState({
-                  phase: nextSel >= totalSelections ? "complete" : "idle",
-                  selectionIndex: nextSel,
-                  drawnSegments: 0,
-                  dragProgress: 0,
-                });
-                animatingRef.current = false;
+                if (selectionIndex === BSOD_AFTER_SELECTION) {
+                  setState((s) => ({
+                    ...s,
+                    phase: "bsod",
+                    bsodProgress: 0,
+                  }));
+                  animatingRef.current = false;
+                } else {
+                  const nextSel = selectionIndex + 1;
+                  setState({
+                    phase: nextSel >= totalSelections ? "complete" : "idle",
+                    selectionIndex: nextSel,
+                    drawnSegments: 0,
+                    dragProgress: 0,
+                    dragInProgress: 0,
+                    bsodProgress: 0,
+                  });
+                  animatingRef.current = false;
+                }
               }, DISSOLVE_DURATION);
             }, MASK_DURATION);
           }, 50);
@@ -184,6 +226,8 @@ export function useScrollHijack() {
                   selectionIndex: nextSel,
                   drawnSegments: 0,
                   dragProgress: 0,
+                  dragInProgress: 0,
+                  bsodProgress: 0,
                 });
                 animatingRef.current = false;
               }, DISSOLVE_DURATION);
@@ -214,6 +258,25 @@ export function useScrollHijack() {
           }));
         } else {
           setState((s) => ({ ...s, dragProgress: next }));
+        }
+        return;
+      }
+
+      if (curPhase === "bsod") {
+        const { bsodProgress: curBsod } = stateRef.current;
+        const dec = steps / BSOD_STEPS;
+        const next = Math.max(curBsod - dec, 0);
+        if (next <= 0) {
+          // Return to the collage layer at full progress
+          const pointCount = getPointCount(selectionIndex);
+          setState((s) => ({
+            ...s,
+            phase: "drawing",
+            drawnSegments: pointCount,
+            bsodProgress: 0,
+          }));
+        } else {
+          setState((s) => ({ ...s, bsodProgress: next }));
         }
         return;
       }
@@ -259,11 +322,22 @@ export function useScrollHijack() {
           }));
           return;
         }
+        if (prevIdx === BSOD_AFTER_SELECTION) {
+          setState((s) => ({
+            ...s,
+            phase: "bsod",
+            bsodProgress: 1,
+          }));
+          return;
+        }
         const prevPointCount = getPointCount(prevIdx);
         setState({
           phase: "idle",
           selectionIndex: prevIdx,
           drawnSegments: prevPointCount,
+          dragProgress: 0,
+          dragInProgress: 0,
+          bsodProgress: 0,
         });
       }
     },
@@ -379,6 +453,7 @@ export function useScrollHijack() {
         drawnSegments: 0,
         dragProgress: 0,
         dragInProgress: 0,
+        bsodProgress: 0,
       });
     },
     [totalSelections],
