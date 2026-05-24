@@ -158,20 +158,41 @@ export function AlbumViewport() {
         {activeLayer?.collageItems && !isDragging && drawnSegments > 0 && (() => {
           const items = activeLayer.collageItems!;
 
-          // Map drawnSegments (tick count) to per-item visibility.
-          // Normal items cost 1 tick; trail items cost trail.count ticks.
+          // Map drawnSegments to per-item visibility.
+          // Normal items cost 1 tick. Consecutive trail items are interleaved.
           let ticksRemaining = drawnSegments;
-          const itemVisibility: { visible: boolean; trailCopies: number }[] = [];
-          for (const item of items) {
-            if (ticksRemaining <= 0) {
-              itemVisibility.push({ visible: false, trailCopies: 0 });
-            } else if (item.trail) {
-              const copies = Math.min(ticksRemaining, item.trail.count);
-              itemVisibility.push({ visible: true, trailCopies: copies });
-              ticksRemaining -= copies;
-            } else {
-              itemVisibility.push({ visible: true, trailCopies: 0 });
+          const itemVisibility: { visible: boolean; trailCopies: number }[] = items.map(() => ({ visible: false, trailCopies: 0 }));
+
+          let i = 0;
+          while (i < items.length && ticksRemaining > 0) {
+            const item = items[i];
+            if (!item.trail) {
+              itemVisibility[i] = { visible: true, trailCopies: 0 };
               ticksRemaining -= 1;
+              i++;
+            } else {
+              // Gather consecutive trail items for interleaving
+              const trailGroup: number[] = [];
+              let j = i;
+              while (j < items.length && items[j].trail) {
+                trailGroup.push(j);
+                itemVisibility[j] = { visible: true, trailCopies: 0 };
+                j++;
+              }
+              // Distribute ticks round-robin across the group
+              const maxCount = Math.max(...trailGroup.map((idx) => items[idx].trail!.count));
+              let tick = 0;
+              while (ticksRemaining > 0 && tick < maxCount * trailGroup.length) {
+                const groupIdx = tick % trailGroup.length;
+                const itemIdx = trailGroup[groupIdx];
+                const copyNum = Math.floor(tick / trailGroup.length);
+                if (copyNum < items[itemIdx].trail!.count) {
+                  itemVisibility[itemIdx].trailCopies = copyNum + 1;
+                  ticksRemaining -= 1;
+                }
+                tick++;
+              }
+              i = j;
             }
           }
 
