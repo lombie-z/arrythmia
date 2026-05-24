@@ -421,10 +421,10 @@ export const ALBUM_DATA: AlbumSequence = {
         {
           imageUrl: "/images/collage/person.webp",
           points: [
-            { x: 12, y: 57 },
-            { x: 48, y: 57 },
-            { x: 48, y: 93 },
-            { x: 12, y: 93 },
+            { x: 9, y: 46 },
+            { x: 54, y: 46 },
+            { x: 54, y: 93 },
+            { x: 9, y: 93 },
           ],
         },
       ],
