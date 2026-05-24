@@ -44,7 +44,17 @@ export function useScrollHijack() {
   const getPointCount = useCallback(
     (idx: number) => {
       if (idx >= totalSelections) return 0;
-      return ALBUM_DATA.layers[idx].selection.points.length;
+      const layer = ALBUM_DATA.layers[idx];
+      if (layer.collageItems) return layer.collageItems.length;
+      return layer.selection.points.length;
+    },
+    [totalSelections],
+  );
+
+  const isCollageLayer = useCallback(
+    (idx: number) => {
+      if (idx >= totalSelections) return false;
+      return !!ALBUM_DATA.layers[idx].collageItems;
     },
     [totalSelections],
   );
@@ -93,11 +103,18 @@ export function useScrollHijack() {
       if (selectionIndex >= totalSelections) return;
 
       const pointCount = getPointCount(selectionIndex);
-      const progress = drawnSegments / pointCount;
-      const remaining = 1 - (drawnSegments + steps) / pointCount;
-      const nearEdge = progress < 0.12 || remaining < 0.12;
-      const easedSteps = nearEdge ? Math.max(1, Math.ceil(steps * 0.3)) : steps;
-      const next = Math.min(drawnSegments + easedSteps, pointCount);
+      let next: number;
+
+      if (isCollageLayer(selectionIndex)) {
+        const collageSteps = Math.max(1, Math.floor(steps / 8));
+        next = Math.min(drawnSegments + collageSteps, pointCount);
+      } else {
+        const progress = drawnSegments / pointCount;
+        const remaining = 1 - (drawnSegments + steps) / pointCount;
+        const nearEdge = progress < 0.12 || remaining < 0.12;
+        const easedSteps = nearEdge ? Math.max(1, Math.ceil(steps * 0.3)) : steps;
+        next = Math.min(drawnSegments + easedSteps, pointCount);
+      }
 
       if (next < pointCount) {
         setState((s) => ({ ...s, phase: "drawing", drawnSegments: next }));

@@ -137,6 +137,48 @@ export function AlbumViewport() {
           </>
         ) : null}
 
+        {/* Collage layer: pieces appear one at a time */}
+        {activeLayer?.collageItems && !isDragging && !isDraggingIn && drawnSegments > 0 && (() => {
+          const items = activeLayer.collageItems!;
+          const visibleCount = Math.min(drawnSegments, items.length);
+          return (
+            <>
+              {items.slice(0, visibleCount).map((item, i) => (
+                <div
+                  key={`collage-${i}`}
+                  className="absolute inset-0"
+                  style={{
+                    clipPath: toClipPath(item.points),
+                    zIndex: 30 + i,
+                  }}
+                >
+                  <img
+                    src={item.imageUrl}
+                    alt=""
+                    draggable={false}
+                    className="absolute inset-0 w-full h-full select-none"
+                    style={{ objectFit: "fill", pointerEvents: "none" }}
+                  />
+                </div>
+              ))}
+              {/* Selection outline only on the last dropped piece */}
+              {visibleCount > 0 && visibleCount <= items.length && (
+                <svg
+                  className="absolute inset-0 w-full h-full"
+                  style={{ zIndex: 50, pointerEvents: "none" }}
+                >
+                  <SelectionPath
+                    points={items[visibleCount - 1].points}
+                    drawnSegments={items[visibleCount - 1].points.length}
+                    dissolving={false}
+                    playing={false}
+                  />
+                </svg>
+              )}
+            </>
+          );
+        })()}
+
         {/* Drag interlude: checkerboard hole + moving selection piece + cursor */}
         {isDragging && activeLayer && (() => {
           const pts = activeLayer.selection.points;
@@ -380,7 +422,7 @@ export function AlbumViewport() {
             );
           })()}
 
-          {activeLayer && drawnSegments > 0 && !isDragging && (
+          {activeLayer && drawnSegments > 0 && !isDragging && !activeLayer.collageItems && (
             <SelectionPath
               points={activeLayer.selection.points}
               drawnSegments={drawnSegments}

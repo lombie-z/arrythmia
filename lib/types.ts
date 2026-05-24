@@ -16,9 +16,15 @@ export interface Track {
   variantImage?: string;
 }
 
+export interface CollageItem {
+  imageUrl: string;
+  points: AnchorPoint[];
+}
+
 export interface Layer {
   imageUrl: string;
   selection: SelectionRegion;
+  collageItems?: CollageItem[];
 }
 
 export interface AlbumSequence {
