@@ -169,8 +169,8 @@ export function AlbumViewport() {
           // Cursor
           const startX = 105;
           const startY = -5;
-          const restX = 75;
-          const restY = 30;
+          const restX = cx + DRAG_TARGET.dx + 20;
+          const restY = cy + DRAG_TARGET.dy - 5;
           let cursorX: number, cursorY: number;
           let cursorStyle: "default" | "grab" | "grabbing";
 
@@ -263,7 +263,7 @@ export function AlbumViewport() {
                   >
                     <path
                       fillRule="evenodd"
-                      d={`M0,0 L100,0 L100,100 L0,100 Z M${pts[0].x},${pts[0].y} ${pts.slice(1).map((pt) => `L${pt.x},${pt.y}`).join(" ")} Z`}
+                      d={`M0,0 L100,0 L100,100 L0,100 Z M${snapEdge(pts[0].x)},${snapEdge(pts[0].y)} ${pts.slice(1).map((pt) => `L${snapEdge(pt.x)},${snapEdge(pt.y)}`).join(" ")} Z`}
                       fill="rgba(80, 130, 255, 0.2)"
                     />
                   </svg>
@@ -279,9 +279,9 @@ export function AlbumViewport() {
                       fill="none" stroke="#6ca6ff" strokeWidth="0.3"
                       className="marching-ants"
                     />
-                    {/* Ants around the original selection hole */}
+                    {/* Ants around the original selection hole — use snapped coords */}
                     <polygon
-                      points={pts.map((pt) => `${pt.x},${pt.y}`).join(" ")}
+                      points={pts.map((pt) => `${snapEdge(pt.x)},${snapEdge(pt.y)}`).join(" ")}
                       fill="none" stroke="#6ca6ff" strokeWidth="0.3"
                       className="marching-ants"
                     />
