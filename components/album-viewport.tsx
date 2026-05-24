@@ -231,9 +231,9 @@ export function AlbumViewport() {
                 />
               </svg>
               {/* Cursor with style transitions */}
-              {!isExiting || dragProgress < 0.99 ? (
+              {dragProgress < 0.99 && (
                 <DragCursor x={cursorX} y={cursorY} style={cursorStyle} />
-              ) : null}
+              )}
             </>
           );
         })()}
