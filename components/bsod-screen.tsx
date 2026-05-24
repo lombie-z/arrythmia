@@ -71,7 +71,7 @@ const BarrelSvgFilter = () => (
 export function BsodScreen({ progress }: { progress: number }) {
   const eased = Math.pow(progress, 3.5);
   const pct = Math.min(100, Math.round(eased * 102));
-  const fadingOut = progress > 0.92;
+  const fadingOut = false;
   const deadPixels = useMemo(() => generateDeadPixels(40), []);
 
   /* color-fringe offset applied via text-shadow on every text block */
