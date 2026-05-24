@@ -149,17 +149,30 @@ export function useScrollHijack() {
           tickAcc += weight;
         }
 
-        if (!isTrailTick) {
-          momentumRef.current = 0;
-          if (momentumTimer.current) {
-            clearInterval(momentumTimer.current);
-            momentumTimer.current = null;
-          }
+        momentumRef.current = 0;
+        if (momentumTimer.current) {
+          clearInterval(momentumTimer.current);
+          momentumTimer.current = null;
+        }
+
+        if (isTrailTick) {
+          // Auto-advance all trail ticks
+          animatingRef.current = true;
+          const autoAdvance = setInterval(() => {
+            const { drawnSegments: cur } = stateRef.current;
+            if (cur >= pointCount) {
+              clearInterval(autoAdvance);
+              animatingRef.current = false;
+              return;
+            }
+            setState((s) => ({ ...s, phase: "drawing", drawnSegments: cur + 1 }));
+          }, 30);
+          return;
         }
 
         animatingRef.current = true;
         next = Math.min(drawnSegments + 1, pointCount);
-        setTimeout(() => { animatingRef.current = false; }, isTrailTick ? 30 : 400);
+        setTimeout(() => { animatingRef.current = false; }, 400);
       } else {
         const TARGET_POINTS = 50;
         const weight = Math.max(0.2, pointCount / TARGET_POINTS);
