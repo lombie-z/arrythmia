@@ -101,18 +101,17 @@ export function useScrollHijack() {
 
       if (curPhase === "bsod") {
         const { bsodProgress: curBsod, selectionIndex: curSel } = stateRef.current;
-        const pctDisplay = Math.pow(curBsod, 3.5) * 102;
         let slowdown: number;
-        if (pctDisplay >= 96) {
-          slowdown = 0.02;
-        } else if (pctDisplay >= 90) {
-          slowdown = 0.08;
-        } else if (pctDisplay >= 70) {
-          slowdown = 0.2;
+        if (curBsod >= 0.85) {
+          slowdown = 0.005;
+        } else if (curBsod >= 0.7) {
+          slowdown = 0.03;
+        } else if (curBsod >= 0.5) {
+          slowdown = 0.1;
         } else {
-          slowdown = 1 - curBsod * 0.7;
+          slowdown = 1;
         }
-        if (pctDisplay >= 70) {
+        if (curBsod >= 0.5) {
           momentumRef.current = 0;
           if (momentumTimer.current) {
             clearInterval(momentumTimer.current);
