@@ -174,8 +174,8 @@ export function AlbumViewport() {
           const grabY = startY - 5;
           const dropX = grabX + DRAG_TARGET.dx;
           const dropY = grabY + DRAG_TARGET.dy;
-          const restX = dropX + 8;
-          const restY = dropY - 5;
+          const restX = dropX + 22;
+          const restY = dropY - 8;
           let cursorX: number, cursorY: number;
           let cursorStyle: "default" | "grab" | "grabbing";
 
