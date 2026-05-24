@@ -230,7 +230,7 @@ export function AlbumViewport() {
               <div
                 className="absolute inset-0 checkerboard"
                 style={{
-                  zIndex: showFullCheckerboard ? 3 : 15,
+                  zIndex: 15,
                   clipPath: showFullCheckerboard ? undefined : (showHoleCheckerboard ? toClipPath(pts) : "polygon(0 0, 0 0, 0 0)"),
                 }}
               />
