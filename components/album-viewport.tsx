@@ -219,7 +219,7 @@ export function AlbumViewport() {
             cursorStyle = "default";
           } else {
             // Exit to the right and up, eased
-            const t = Math.min(1, (p - 0.82) / 0.15);
+            const t = Math.min(1, (p - 0.82) / 0.18);
             const ease = t * t * (3 - 2 * t);
             cursorX = restX + (110 - restX) * ease;
             cursorY = restY + (50 - restY) * ease + Math.sin(t * Math.PI) * -8;
@@ -333,10 +333,10 @@ export function AlbumViewport() {
 
           return (
             <>
-              {/* Checkerboard base (from previous drag) */}
+              {/* Checkerboard base — above nested layers so prev selection doesn't show */}
               <div
                 className="absolute inset-0 checkerboard"
-                style={{ zIndex: 3 }}
+                style={{ zIndex: 15 }}
               />
               {/* New image sliding in from right */}
               <div
