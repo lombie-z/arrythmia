@@ -164,7 +164,7 @@ export function AlbumViewport() {
           const showHoleCheckerboard = p > 0.16;
           const showMarchingAnts = p >= 0.60 && p < 0.82;
           const showFullCheckerboard = p >= 0.75;
-          const deleteProgress = p >= 0.75 ? Math.min(1, (p - 0.75) / 0.07) : 0;
+          const deleteProgress = p >= 0.75 ? 1 : 0;
 
           // Cursor
           const startX = 105;
@@ -261,49 +261,35 @@ export function AlbumViewport() {
                   {nestedLayers}
                 </div>
               </div>
-              {/* Marching ants — "select inverse" highlight on remaining image */}
+              {/* Blue highlight tint — "select inverse" over remaining image */}
               {showMarchingAnts && (
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    zIndex: 16,
+                    background: "rgba(80, 130, 255, 0.2)",
+                    pointerEvents: "none",
+                  }}
+                />
+              )}
+              {/* SVG outline on the moving piece — hide once select inverse starts */}
+              {p < 0.60 && (
                 <svg
                   className="absolute inset-0 w-full h-full"
-                  style={{ zIndex: 56, pointerEvents: "none" }}
+                  style={{
+                    zIndex: 55,
+                    pointerEvents: "none",
+                    transform: `translate(${dx}%, ${dy}%)`,
+                  }}
                 >
-                  {/* Border around viewport edge */}
-                  <rect
-                    x="0.5%"
-                    y="0.5%"
-                    width="99%"
-                    height="99%"
-                    fill="none"
-                    stroke="#6ca6ff"
-                    strokeWidth={1.5}
-                    className="marching-ants"
-                  />
-                  {/* Border around dragged piece (exclusion) */}
-                  <polygon
-                    points={draggedPts.map((pt) => `${pt.x}%,${pt.y}%`).join(" ")}
-                    fill="none"
-                    stroke="#6ca6ff"
-                    strokeWidth={1.5}
-                    className="marching-ants"
+                  <SelectionPath
+                    points={pts}
+                    drawnSegments={pts.length}
+                    dissolving={false}
+                    playing={false}
                   />
                 </svg>
               )}
-              {/* SVG outline on the moving piece */}
-              <svg
-                className="absolute inset-0 w-full h-full"
-                style={{
-                  zIndex: 55,
-                  pointerEvents: "none",
-                  transform: `translate(${dx}%, ${dy}%)`,
-                }}
-              >
-                <SelectionPath
-                  points={pts}
-                  drawnSegments={pts.length}
-                  dissolving={false}
-                  playing={false}
-                />
-              </svg>
               {/* Cursor */}
               {p < 0.90 && (
                 <DragCursor x={cursorX} y={cursorY} style={cursorStyle} />
