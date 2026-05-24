@@ -166,12 +166,12 @@ export function AlbumViewport() {
           const showFullCheckerboard = p >= 0.75;
           const deleteProgress = p >= 0.75 ? 1 : 0;
 
-          // Natural cursor path: just outside right edge → inside → drag → slight outward
-          const rightEdge = 67.7;
-          const startX = rightEdge + 5;
-          const startY = cy;
-          const grabX = rightEdge - 5;
-          const grabY = cy;
+          // Cursor starts from last SVG anchor, moves right into selection to grab
+          const lastPt = pts[pts.length - 1];
+          const startX = lastPt.x;
+          const startY = lastPt.y;
+          const grabX = startX + 15;
+          const grabY = startY - 5;
           const dropX = grabX + DRAG_TARGET.dx;
           const dropY = grabY + DRAG_TARGET.dy;
           const restX = dropX + 8;
