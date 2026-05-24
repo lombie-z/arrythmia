@@ -14,7 +14,7 @@ import { LoadingScreen } from "./loading-screen";
 import { SocialLinks } from "./social-links";
 import { DragCursor } from "./drag-cursor";
 
-const EDGE_SNAP = 2;
+const EDGE_SNAP = 0.5;
 const DRAG_LAYER_INDEX = 3;
 const DRAG_TARGET = { dx: -35, dy: 35 };
 

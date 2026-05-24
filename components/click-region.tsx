@@ -9,7 +9,7 @@ interface ClickRegionProps {
   onClick: () => void;
 }
 
-const EDGE_SNAP = 2;
+const EDGE_SNAP = 0.5;
 
 function snap(v: number): number {
   if (v <= EDGE_SNAP) return 0;
