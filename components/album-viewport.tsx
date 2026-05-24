@@ -134,7 +134,7 @@ export function AlbumViewport() {
         ) : !isDraggingIn ? (
           <>
             <ImageLayer imageUrl={currentImage} zIndex={2} visible />
-            {nestedLayers}
+            {!isComplete && nestedLayers}
           </>
         ) : null}
 
