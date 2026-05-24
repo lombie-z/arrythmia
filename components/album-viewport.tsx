@@ -261,7 +261,7 @@ export function AlbumViewport() {
                   {nestedLayers}
                 </div>
               </div>
-              {/* Blue highlight tint — "select inverse" over remaining image */}
+              {/* Blue highlight tint — "select inverse" over remaining image only */}
               {showMarchingAnts && (
                 <div
                   className="absolute inset-0"
@@ -269,6 +269,8 @@ export function AlbumViewport() {
                     zIndex: 16,
                     background: "rgba(80, 130, 255, 0.2)",
                     pointerEvents: "none",
+                    clipPath: `polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${pts.map((pt) => `${snapEdge(pt.x)}% ${snapEdge(pt.y)}%`).join(", ")})`,
+                    clipRule: "evenodd",
                   }}
                 />
               )}
