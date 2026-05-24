@@ -68,7 +68,7 @@ export function useScrollHijack() {
               dragProgress: 0,
             });
             animatingRef.current = false;
-          }, 300);
+          }, 1200);
         } else {
           setState((s) => ({ ...s, dragProgress: next }));
         }
