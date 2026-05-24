@@ -162,7 +162,36 @@ export function useScrollHijack() {
             const { drawnSegments: cur } = stateRef.current;
             if (cur >= pointCount) {
               clearInterval(autoAdvance);
-              animatingRef.current = false;
+              // Auto-trigger closing → masking → BSOD
+              setState((s) => ({ ...s, phase: "closing", drawnSegments: pointCount }));
+              setTimeout(() => {
+                setState((s) => ({ ...s, phase: "masking" }));
+                setTimeout(() => {
+                  setState((s) => ({ ...s, phase: "dissolving" }));
+                  setTimeout(() => {
+                    if (selectionIndex === BSOD_AFTER_SELECTION) {
+                      setState((s) => ({
+                        ...s,
+                        phase: "bsod",
+                        selectionIndex: selectionIndex + 1,
+                        drawnSegments: 0,
+                        bsodProgress: 0,
+                      }));
+                    } else {
+                      const nextSel = selectionIndex + 1;
+                      setState({
+                        phase: nextSel >= totalSelections ? "complete" : "idle",
+                        selectionIndex: nextSel,
+                        drawnSegments: 0,
+                        dragProgress: 0,
+                        dragInProgress: 0,
+                        bsodProgress: 0,
+                      });
+                    }
+                    animatingRef.current = false;
+                  }, DISSOLVE_DURATION);
+                }, MASK_DURATION);
+              }, 50);
               return;
             }
             setState((s) => ({ ...s, phase: "drawing", drawnSegments: cur + 1 }));
