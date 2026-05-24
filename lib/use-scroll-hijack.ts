@@ -102,7 +102,9 @@ export function useScrollHijack() {
       if (curPhase === "bsod") {
         const { bsodProgress: curBsod, selectionIndex: curSel } = stateRef.current;
         let slowdown: number;
-        if (curBsod >= 0.85) {
+        if (curBsod >= 0.95) {
+          slowdown = 0.001;
+        } else if (curBsod >= 0.85) {
           slowdown = 0.005;
         } else if (curBsod >= 0.7) {
           slowdown = 0.03;
