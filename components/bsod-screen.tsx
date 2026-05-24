@@ -69,7 +69,8 @@ const BarrelSvgFilter = () => (
 /* ---------- component --------------------------------------------------- */
 
 export function BsodScreen({ progress }: { progress: number }) {
-  const pct = Math.min(100, Math.round(progress * 110));
+  const eased = progress * progress;
+  const pct = Math.min(100, Math.round(eased * 105));
   const fadingOut = progress > 0.92;
   const deadPixels = useMemo(() => generateDeadPixels(40), []);
 
