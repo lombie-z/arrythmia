@@ -446,7 +446,7 @@ export function AlbumViewport() {
             <SelectionPath
               points={activeLayer.selection.points}
               drawnSegments={drawnSegments}
-              dissolving={phase === "dissolving"}
+              dissolving={phase === "dissolving" && selectionIndex < layers.length - 1}
               playing={false}
             />
           )}
