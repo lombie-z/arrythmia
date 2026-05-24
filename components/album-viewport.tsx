@@ -134,7 +134,24 @@ export function AlbumViewport() {
         ) : !isDraggingIn ? (
           <>
             <ImageLayer imageUrl={currentImage} zIndex={2} visible />
-            {!isComplete && nestedLayers}
+            {isComplete ? (() => {
+              const lastReal = [...completedLayers].reverse().find((l) => !l.collageItems);
+              if (!lastReal) return null;
+              return (
+                <div
+                  className="absolute inset-0"
+                  style={{ clipPath: toClipPath(lastReal.selection.points), zIndex: 10 }}
+                >
+                  <img
+                    src={lastReal.imageUrl}
+                    alt=""
+                    draggable={false}
+                    className="absolute inset-0 w-full h-full select-none"
+                    style={{ objectFit: "fill", pointerEvents: "none" }}
+                  />
+                </div>
+              );
+            })() : nestedLayers}
           </>
         ) : null}
 
