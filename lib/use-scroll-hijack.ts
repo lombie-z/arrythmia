@@ -11,7 +11,7 @@ const MOMENTUM_MIN = 0.4;
 const MOMENTUM_INTERVAL = 40;
 
 const DRAG_AFTER_SELECTION = 4;
-const DRAG_STEPS = 30;
+const DRAG_STEPS = 80;
 
 interface ScrollState {
   phase: ScrollPhase;

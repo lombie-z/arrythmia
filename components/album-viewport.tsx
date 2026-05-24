@@ -16,7 +16,7 @@ import { DragCursor } from "./drag-cursor";
 
 const EDGE_SNAP = 2;
 const DRAG_LAYER_INDEX = 3;
-const DRAG_TARGET = { dx: -30, dy: 30 };
+const DRAG_TARGET = { dx: -35, dy: 35 };
 
 function snapEdge(v: number): number {
   if (v <= EDGE_SNAP) return 0;
@@ -148,11 +148,11 @@ export function AlbumViewport() {
           const dx = DRAG_TARGET.dx * dragT;
           const dy = DRAG_TARGET.dy * dragT;
 
-          // Cursor starts off-screen top-right, ends off-screen bottom-left
-          const startX = 105;
+          // Cursor starts off-screen top-left, exits off-screen left
+          const startX = -5;
           const startY = -5;
-          const endX = cx + DRAG_TARGET.dx - 20;
-          const endY = cy + DRAG_TARGET.dy + 25;
+          const endX = -10;
+          const endY = cy + DRAG_TARGET.dy;
           let cursorX: number, cursorY: number;
           let cursorStyle: "default" | "grab" | "grabbing";
 
