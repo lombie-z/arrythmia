@@ -252,20 +252,41 @@ export function AlbumViewport() {
                   {nestedLayers}
                 </div>
               </div>
-              {/* Blue highlight tint — SVG with evenodd cutout for the hole */}
+              {/* Blue highlight + marching ants on edges and hole */}
               {showMarchingAnts && (
-                <svg
-                  className="absolute inset-0 w-full h-full"
-                  viewBox="0 0 100 100"
-                  preserveAspectRatio="none"
-                  style={{ zIndex: 16, pointerEvents: "none" }}
-                >
-                  <path
-                    fillRule="evenodd"
-                    d={`M0,0 L100,0 L100,100 L0,100 Z M${pts[0].x},${pts[0].y} ${pts.slice(1).map((pt) => `L${pt.x},${pt.y}`).join(" ")} Z`}
-                    fill="rgba(80, 130, 255, 0.2)"
-                  />
-                </svg>
+                <>
+                  <svg
+                    className="absolute inset-0 w-full h-full"
+                    viewBox="0 0 100 100"
+                    preserveAspectRatio="none"
+                    style={{ zIndex: 16, pointerEvents: "none" }}
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d={`M0,0 L100,0 L100,100 L0,100 Z M${pts[0].x},${pts[0].y} ${pts.slice(1).map((pt) => `L${pt.x},${pt.y}`).join(" ")} Z`}
+                      fill="rgba(80, 130, 255, 0.2)"
+                    />
+                  </svg>
+                  <svg
+                    className="absolute inset-0 w-full h-full"
+                    viewBox="0 0 100 100"
+                    preserveAspectRatio="none"
+                    style={{ zIndex: 57, pointerEvents: "none" }}
+                  >
+                    {/* Ants around viewport edge */}
+                    <rect
+                      x="0.2" y="0.2" width="99.6" height="99.6"
+                      fill="none" stroke="#6ca6ff" strokeWidth="0.3"
+                      className="marching-ants"
+                    />
+                    {/* Ants around the original selection hole */}
+                    <polygon
+                      points={pts.map((pt) => `${pt.x},${pt.y}`).join(" ")}
+                      fill="none" stroke="#6ca6ff" strokeWidth="0.3"
+                      className="marching-ants"
+                    />
+                  </svg>
+                </>
               )}
               {/* SVG outline on the moving piece — hide once select inverse starts */}
               {p < 0.60 && (
@@ -285,10 +306,8 @@ export function AlbumViewport() {
                   />
                 </svg>
               )}
-              {/* Cursor — vanishes when delete happens */}
-              {p < 0.75 && (
-                <DragCursor x={cursorX} y={cursorY} style={cursorStyle} />
-              )}
+              {/* Cursor — stays until next scene */}
+              <DragCursor x={cursorX} y={cursorY} style={cursorStyle} />
             </>
           );
         })()}
