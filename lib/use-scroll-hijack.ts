@@ -112,7 +112,32 @@ export function useScrollHijack() {
         next = Math.min(drawnSegments + easedSteps, pointCount);
       }
 
-      if (next < pointCount) {
+      if (isCollageLayer(selectionIndex)) {
+        if (drawnSegments < pointCount) {
+          setState((s) => ({ ...s, phase: "drawing", drawnSegments: next }));
+        } else {
+          // All pieces shown — next scroll triggers transition
+          animatingRef.current = true;
+          momentumRef.current = 0;
+          setState((s) => ({ ...s, phase: "closing", drawnSegments: pointCount }));
+          setTimeout(() => {
+            setState((s) => ({ ...s, phase: "masking" }));
+            setTimeout(() => {
+              setState((s) => ({ ...s, phase: "dissolving" }));
+              setTimeout(() => {
+                const nextSel = selectionIndex + 1;
+                setState({
+                  phase: nextSel >= totalSelections ? "complete" : "idle",
+                  selectionIndex: nextSel,
+                  drawnSegments: 0,
+                  dragProgress: 0,
+                });
+                animatingRef.current = false;
+              }, DISSOLVE_DURATION);
+            }, MASK_DURATION);
+          }, 50);
+        }
+      } else if (next < pointCount) {
         setState((s) => ({ ...s, phase: "drawing", drawnSegments: next }));
       } else {
         animatingRef.current = true;
