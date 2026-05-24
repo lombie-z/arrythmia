@@ -131,13 +131,13 @@ body {
 }
 
 .marching-ants {
-  stroke-dasharray: 6 4;
-  animation: march 0.4s linear infinite;
+  stroke-dasharray: 2 2;
+  animation: march 1.2s linear infinite;
 }
 
 @keyframes march {
   from { stroke-dashoffset: 0; }
-  to { stroke-dashoffset: -10; }
+  to { stroke-dashoffset: -4; }
 }
 
 .checkerboard {

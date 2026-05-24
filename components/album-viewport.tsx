@@ -271,7 +271,7 @@ export function AlbumViewport() {
                     className="absolute inset-0 w-full h-full"
                     viewBox="0 0 100 100"
                     preserveAspectRatio="none"
-                    style={{ zIndex: 57, pointerEvents: "none" }}
+                    style={{ zIndex: 17, pointerEvents: "none" }}
                   >
                     {/* Ants around viewport edge */}
                     <rect
