@@ -112,6 +112,13 @@ export function useScrollHijack() {
         } else {
           slowdown = 1 - curBsod * 0.7;
         }
+        if (pctDisplay >= 70) {
+          momentumRef.current = 0;
+          if (momentumTimer.current) {
+            clearInterval(momentumTimer.current);
+            momentumTimer.current = null;
+          }
+        }
         const inc = (steps / BSOD_STEPS) * slowdown;
         const next = Math.min(curBsod + inc, 1);
 
