@@ -427,6 +427,42 @@ export const ALBUM_DATA: AlbumSequence = {
             { x: 10, y: 95 },
           ],
         },
+        {
+          imageUrl: "/images/collage/butterfly2.webp",
+          points: [
+            { x: 43, y: 56 },
+            { x: 67, y: 56 },
+            { x: 67, y: 74 },
+            { x: 43, y: 74 },
+          ],
+        },
+        {
+          imageUrl: "/images/collage/person2.webp",
+          points: [
+            { x: 55, y: 15 },
+            { x: 75, y: 15 },
+            { x: 75, y: 35 },
+            { x: 55, y: 35 },
+          ],
+        },
+        {
+          imageUrl: "/images/collage/butterfly3.webp",
+          points: [
+            { x: 65, y: 73 },
+            { x: 85, y: 73 },
+            { x: 85, y: 87 },
+            { x: 65, y: 87 },
+          ],
+        },
+        {
+          imageUrl: "/images/collage/person3.webp",
+          points: [
+            { x: 74, y: 7 },
+            { x: 90, y: 7 },
+            { x: 90, y: 23 },
+            { x: 74, y: 23 },
+          ],
+        },
       ],
     },
     {
