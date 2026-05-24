@@ -181,6 +181,8 @@ export function useScrollHijack() {
                   setState((s) => ({
                     ...s,
                     phase: "bsod",
+                    selectionIndex: selectionIndex + 1,
+                    drawnSegments: 0,
                     bsodProgress: 0,
                   }));
                   animatingRef.current = false;
@@ -267,11 +269,12 @@ export function useScrollHijack() {
         const dec = steps / BSOD_STEPS;
         const next = Math.max(curBsod - dec, 0);
         if (next <= 0) {
-          // Return to the collage layer at full progress
-          const pointCount = getPointCount(selectionIndex);
+          const prevIdx = selectionIndex - 1;
+          const pointCount = getPointCount(prevIdx);
           setState((s) => ({
             ...s,
             phase: "drawing",
+            selectionIndex: prevIdx,
             drawnSegments: pointCount,
             bsodProgress: 0,
           }));

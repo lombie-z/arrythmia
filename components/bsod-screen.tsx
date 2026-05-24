@@ -1,7 +1,8 @@
 "use client";
 
 export function BsodScreen({ progress }: { progress: number }) {
-  const flickering = progress > 0.7 && progress < 0.95;
+  const pct = Math.min(100, Math.round(progress * 125));
+  const flickering = pct >= 90 && progress < 0.95;
   const fadingOut = progress > 0.9;
 
   return (
@@ -9,9 +10,10 @@ export function BsodScreen({ progress }: { progress: number }) {
       className={`absolute inset-0 flex flex-col justify-center px-[10%] ${flickering ? "bsod-flicker" : ""}`}
       style={{
         zIndex: 100,
-        background: "#0078D7",
+        background: "#0000aa",
         opacity: fadingOut ? Math.max(0, 1 - (progress - 0.9) * 10) : 1,
         transition: fadingOut ? "opacity 100ms" : undefined,
+        fontFamily: "'Courier New', 'Lucida Console', monospace",
       }}
     >
       <div
@@ -20,15 +22,16 @@ export function BsodScreen({ progress }: { progress: number }) {
           fontSize: "clamp(80px, 15vw, 160px)",
           fontWeight: 100,
           lineHeight: 1,
+          fontFamily: "system-ui, -apple-system, sans-serif",
         }}
       >
-        ;(
+        ;)
       </div>
       <div
         className="text-white mt-6"
         style={{
-          fontSize: "clamp(14px, 2vw, 22px)",
-          fontWeight: 300,
+          fontSize: "clamp(12px, 1.8vw, 20px)",
+          fontWeight: 400,
         }}
       >
         Your PC ran into a problem and needs to restart.
@@ -38,15 +41,15 @@ export function BsodScreen({ progress }: { progress: number }) {
       <div
         className="text-white mt-4"
         style={{
-          fontSize: "clamp(14px, 2vw, 22px)",
-          fontWeight: 300,
+          fontSize: "clamp(12px, 1.8vw, 20px)",
+          fontWeight: 400,
         }}
       >
-        0% complete
+        {pct}% complete
       </div>
       <div
         className="text-white/60 mt-12"
-        style={{ fontSize: "clamp(8px, 1vw, 12px)" }}
+        style={{ fontSize: "clamp(8px, 1vw, 11px)" }}
       >
         If you&apos;d like to know more, you can search online later for this
         error: ARRHYTHMIA_TRACK_OVERFLOW

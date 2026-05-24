@@ -469,13 +469,13 @@ export function AlbumViewport() {
         {/* Loading screen inside the content area */}
         {!loaded && <LoadingScreen onDone={onLoadDone} />}
 
-        {/* Retro player — fixed on mobile (blue area), absolute on desktop (inside screen) */}
-        <RetroPlayer
+        {/* Retro player — hidden during BSOD */}
+        {phase !== "bsod" && <RetroPlayer
           selectionIndex={selectionIndex}
           totalSections={layers.length}
           onSkipForward={skipForward}
           onSkipBack={skipBack}
-        />
+        />}
       </div>
 
       {/* Nothing here — scroll hint moved inside screen */}
