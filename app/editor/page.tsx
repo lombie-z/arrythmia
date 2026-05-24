@@ -3,6 +3,9 @@
 import { useCallback, useRef, useState } from "react";
 import { ALBUM_DATA } from "@/lib/album-data";
 
+const DRAG_LAYER_INDEX = 3;
+const DRAG_TARGET = { dx: -35, dy: 35 };
+
 interface Point {
   x: number;
   y: number;
@@ -126,12 +129,16 @@ export default function Editor() {
             let nested: React.ReactNode = null;
             for (let i = 0; i < visible.length; i++) {
               const sel = visible[i];
+              const isDragged = sel.index === DRAG_LAYER_INDEX;
               nested = (
                 <div
                   key={`nest-${sel.index}`}
                   className="absolute inset-0 pointer-events-none"
                   style={{
                     clipPath: `polygon(${sel.points.map((p) => `${p.x}% ${p.y}%`).join(", ")})`,
+                    transform: isDragged
+                      ? `translate(${DRAG_TARGET.dx}%, ${DRAG_TARGET.dy}%)`
+                      : undefined,
                   }}
                 >
                   <img
@@ -153,8 +160,12 @@ export default function Editor() {
             {existingSelections.map((sel, si) => {
               if (!visibleExisting.has(si)) return null;
               const pts = sel.points;
+              const isDragged = si === DRAG_LAYER_INDEX;
+              const gTransform = isDragged
+                ? `translate(${DRAG_TARGET.dx}%, ${DRAG_TARGET.dy}%)`
+                : undefined;
               return (
-                <g key={`existing-${si}`} opacity={0.5}>
+                <g key={`existing-${si}`} opacity={0.5} style={{ transform: gTransform }}>
                   {pts.map((p, pi) => {
                     const next = pts[(pi + 1) % pts.length];
                     return (
