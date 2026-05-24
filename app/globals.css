@@ -132,7 +132,7 @@ body {
 
 .marching-ants {
   stroke-dasharray: 1 1;
-  animation: march 1.5s linear infinite;
+  animation: march 0.8s steps(2) infinite;
 }
 
 @keyframes march {
