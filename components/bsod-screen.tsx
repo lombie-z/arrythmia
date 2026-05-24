@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { PlasmaOverlay } from "./plasma-overlay";
 
 /* ---------- seeded PRNG for deterministic dead-pixel positions ---------- */
 function mulberry32(seed: number) {
@@ -73,6 +74,7 @@ export function BsodScreen({ progress }: { progress: number }) {
   const pct = Math.min(100, Math.round(eased * 102));
   const fadingOut = false;
   const deadPixels = useMemo(() => generateDeadPixels(40), []);
+  const plasmaCoverage = Math.max(0, (pct - 85) / 15);
 
   /* color-fringe offset applied via text-shadow on every text block */
   const fringeStyle = {
@@ -216,6 +218,13 @@ export function BsodScreen({ progress }: { progress: number }) {
         }}
         aria-hidden="true"
       />
+
+      {/* ---- plasma overlay bleeding in from edges ---- */}
+      {plasmaCoverage > 0 && (
+        <div className="absolute inset-0" style={{ zIndex: 6 }}>
+          <PlasmaOverlay coverage={plasmaCoverage} />
+        </div>
+      )}
     </div>
   );
 }

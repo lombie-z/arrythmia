@@ -141,7 +141,7 @@ export function useScrollHijack() {
               bsodProgress: 0,
             });
             animatingRef.current = false;
-          }, 200);
+          }, 800);
         } else {
           setState((s) => ({ ...s, bsodProgress: next }));
         }

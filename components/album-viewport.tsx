@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useScrollHijack } from "@/lib/use-scroll-hijack";
 import { ALBUM_DATA } from "@/lib/album-data";
 import { ASPECT_RATIO } from "@/lib/constants";
@@ -14,6 +14,7 @@ import { LoadingScreen } from "./loading-screen";
 import { SocialLinks } from "./social-links";
 import { DragCursor } from "./drag-cursor";
 import { BsodScreen } from "./bsod-screen";
+import { PlasmaOverlay } from "./plasma-overlay";
 
 const EDGE_SNAP = 1;
 const DRAG_LAYER_INDEX = 3;
@@ -85,6 +86,18 @@ export function AlbumViewport() {
 
   const [loaded, setLoaded] = useState(false);
   const onLoadDone = useCallback(() => setLoaded(true), []);
+
+  /* Plasma fade-out after BSOD ends */
+  const [showPlasmaFade, setShowPlasmaFade] = useState(false);
+  const prevPhaseRef = useRef(phase);
+  useEffect(() => {
+    if (prevPhaseRef.current === "bsod" && phase !== "bsod") {
+      setShowPlasmaFade(true);
+      const timer = setTimeout(() => setShowPlasmaFade(false), 600);
+      return () => clearTimeout(timer);
+    }
+    prevPhaseRef.current = phase;
+  }, [phase]);
   const isDragging = phase === "dragging";
   const dragDone = selectionIndex > DRAG_LAYER_INDEX;
   const nestedLayers = buildNestedLayers(
@@ -430,6 +443,21 @@ export function AlbumViewport() {
 
         {/* BSOD transition between sections 7 and 8 */}
         {phase === "bsod" && <BsodScreen progress={bsodProgress} />}
+
+        {/* Plasma fade-out after BSOD ends */}
+        {showPlasmaFade && (
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              zIndex: 100,
+              opacity: 0,
+              transition: "opacity 600ms ease-out",
+              animation: "plasma-fadeout 600ms ease-out forwards",
+            }}
+          >
+            <PlasmaOverlay coverage={1} />
+          </div>
+        )}
 
         {/* SVG selection outlines */}
         <svg
