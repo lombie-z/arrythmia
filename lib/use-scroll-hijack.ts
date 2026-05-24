@@ -11,7 +11,7 @@ const MOMENTUM_MIN = 0.4;
 const MOMENTUM_INTERVAL = 40;
 
 const DRAG_AFTER_SELECTION = 4;
-const DRAG_STEPS = 140;
+const DRAG_STEPS = 60;
 const DRAG_IN_STEPS = 50;
 
 interface ScrollState {
@@ -85,15 +85,16 @@ export function useScrollHijack() {
           setState((s) => ({ ...s, dragProgress: 1 }));
           animatingRef.current = true;
           setTimeout(() => {
-            setState((s) => ({
-              ...s,
-              phase: "dragging-in",
-              selectionIndex: curSel + 1,
+            const nextSel = curSel + 1;
+            setState({
+              phase: nextSel >= totalSelections ? "complete" : "idle",
+              selectionIndex: nextSel,
               drawnSegments: 0,
+              dragProgress: 0,
               dragInProgress: 0,
-            }));
+            });
             animatingRef.current = false;
-          }, 400);
+          }, 300);
         } else {
           setState((s) => ({ ...s, dragProgress: next }));
         }

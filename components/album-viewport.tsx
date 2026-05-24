@@ -67,7 +67,7 @@ function buildNestedLayers(
 }
 
 export function AlbumViewport() {
-  const { phase, selectionIndex, drawnSegments, dragProgress, dragInProgress, goToSection } = useScrollHijack();
+  const { phase, selectionIndex, drawnSegments, dragProgress, goToSection } = useScrollHijack();
   const { layers, finalImage } = ALBUM_DATA;
 
   const completedLayers = layers.slice(0, selectionIndex);
@@ -85,7 +85,6 @@ export function AlbumViewport() {
   const [loaded, setLoaded] = useState(false);
   const onLoadDone = useCallback(() => setLoaded(true), []);
   const isDragging = phase === "dragging";
-  const isDraggingIn = phase === "dragging-in";
   const dragDone = selectionIndex > DRAG_LAYER_INDEX;
   const nestedLayers = buildNestedLayers(
     completedLayers,
@@ -112,9 +111,9 @@ export function AlbumViewport() {
           aspectRatio: `${ASPECT_RATIO}`,
         }}
       >
-        {!isDraggingIn && maskApplied && <ImageLayer imageUrl={nextImage} zIndex={1} visible />}
+        {maskApplied && <ImageLayer imageUrl={nextImage} zIndex={1} visible />}
 
-        {!isDraggingIn && maskApplied && activeLayer ? (
+        {maskApplied && activeLayer ? (
           <div
             className="absolute inset-0"
             style={{
@@ -131,7 +130,7 @@ export function AlbumViewport() {
             />
             {nestedLayers}
           </div>
-        ) : !isDraggingIn ? (
+        ) : (
           <>
             <ImageLayer imageUrl={currentImage} zIndex={2} visible />
             {isComplete ? (() => {
@@ -156,7 +155,7 @@ export function AlbumViewport() {
         ) : null}
 
         {/* Collage layer: pieces appear one at a time */}
-        {activeLayer?.collageItems && !isDragging && !isDraggingIn && drawnSegments > 0 && (() => {
+        {activeLayer?.collageItems && !isDragging && drawnSegments > 0 && (() => {
           const items = activeLayer.collageItems!;
           const visibleCount = Math.min(drawnSegments, items.length);
           return (
@@ -197,37 +196,28 @@ export function AlbumViewport() {
           );
         })()}
 
-        {/* Drag interlude: checkerboard hole + moving selection piece + cursor */}
+        {/* Drag interlude: move piece + cursor exits */}
         {isDragging && activeLayer && (() => {
           const pts = activeLayer.selection.points;
-          const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
-          const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
           const p = dragProgress;
 
           /*
            * Timeline:
-           * 0.00-0.12  Cursor approaches from top-right
-           * 0.12-0.16  Cursor hovers selection (grab)
-           * 0.16-0.52  Cursor drags piece to bottom-left (grabbing)
-           * 0.52-0.55  Cursor releases (grab)
-           * 0.55-0.60  Cursor moves to center of remaining area (default)
-           * 0.60-0.65  "Select inverse" — marching ants appear on rest of image
-           * 0.65-0.75  Marching ants hold
-           * 0.75-0.82  "Delete" — rest of image becomes checkerboard
-           * 0.82-0.90  Cursor exits left
+           * 0.00-0.06  Cursor holds at last SVG point
+           * 0.06-0.20  Cursor moves into selection
+           * 0.20-0.28  Cursor hovers (grab)
+           * 0.28-0.70  Cursor drags piece (grabbing)
+           * 0.70-0.76  Cursor releases (grab)
+           * 0.76-0.90  Cursor exits right
            * 0.90-1.00  Hold, then transition
            */
 
-          const dragT = Math.max(0, Math.min(1, (p - 0.20) / 0.30));
+          const dragT = Math.max(0, Math.min(1, (p - 0.28) / 0.42));
           const dx = DRAG_TARGET.dx * dragT;
           const dy = DRAG_TARGET.dy * dragT;
 
-          const showHoleCheckerboard = p > 0.20;
-          const showMarchingAnts = p >= 0.66 && p < 0.82;
-          const showFullCheckerboard = p >= 0.82;
-          const deleteProgress = p >= 0.82 ? 1 : 0;
+          const showHoleCheckerboard = p > 0.28;
 
-          // Cursor starts from last SVG anchor, moves right into selection to grab
           const lastPt = pts[pts.length - 1];
           const startX = lastPt.x;
           const startY = lastPt.y;
@@ -235,80 +225,51 @@ export function AlbumViewport() {
           const grabY = startY - 5;
           const dropX = grabX + DRAG_TARGET.dx;
           const dropY = grabY + DRAG_TARGET.dy;
-          const restX = dropX + 22;
-          const restY = dropY - 8;
           let cursorX: number, cursorY: number;
           let cursorStyle: "default" | "grab" | "grabbing";
 
-          if (p < 0.04) {
-            // Hold still at start
+          if (p < 0.06) {
             cursorX = startX;
             cursorY = startY;
             cursorStyle = "default";
-          } else if (p < 0.14) {
-            // Move into selection
-            const t = (p - 0.04) / 0.10;
+          } else if (p < 0.20) {
+            const t = (p - 0.06) / 0.14;
             cursorX = startX + (grabX - startX) * t;
             cursorY = startY + (grabY - startY) * t;
             cursorStyle = "default";
-          } else if (p < 0.20) {
-            // Hold with grab cursor
+          } else if (p < 0.28) {
             cursorX = grabX;
             cursorY = grabY;
             cursorStyle = "grab";
-          } else if (p < 0.50) {
-            // Drag
+          } else if (p < 0.70) {
             cursorX = grabX + dx;
             cursorY = grabY + dy;
             cursorStyle = "grabbing";
-          } else if (p < 0.56) {
-            // Hold after release
+          } else if (p < 0.76) {
             cursorX = dropX;
             cursorY = dropY;
             cursorStyle = "grab";
-          } else if (p < 0.62) {
-            // Move outward
-            const t = (p - 0.56) / 0.06;
-            cursorX = dropX + (restX - dropX) * t;
-            cursorY = dropY + (restY - dropY) * t;
-            cursorStyle = "default";
-          } else if (p < 0.82) {
-            // Hold at rest (during ants + highlight)
-            cursorX = restX;
-            cursorY = restY;
-            cursorStyle = "default";
           } else {
-            // Exit to the right and up, eased
-            const t = Math.min(1, (p - 0.82) / 0.18);
+            const t = Math.min(1, (p - 0.76) / 0.14);
             const ease = t * t * (3 - 2 * t);
-            cursorX = restX + (110 - restX) * ease;
-            cursorY = restY + (50 - restY) * ease + Math.sin(t * Math.PI) * -8;
+            cursorX = dropX + (110 - dropX) * ease;
+            cursorY = dropY + (50 - dropY) * ease + Math.sin(t * Math.PI) * -8;
             cursorStyle = "default";
           }
 
-          // Dragged piece points offset for marching ants inversion
-          const draggedPts = pts.map((pt) => ({
-            x: pt.x + DRAG_TARGET.dx * dragT,
-            y: pt.y + DRAG_TARGET.dy * dragT,
-          }));
-
           return (
             <>
-              {/* Single checkerboard — starts clipped to hole, expands to full screen on delete */}
-              <div
-                className="absolute inset-0 checkerboard"
-                style={{
-                  zIndex: 15,
-                  clipPath: showFullCheckerboard ? undefined : (showHoleCheckerboard ? toClipPath(pts) : "polygon(0 0, 0 0, 0 0)"),
-                }}
-              />
-              {/* The selected piece — moves during drag phase */}
+              {/* Checkerboard in the hole */}
+              {showHoleCheckerboard && (
+                <div
+                  className="absolute inset-0 checkerboard"
+                  style={{ clipPath: toClipPath(pts), zIndex: 15 }}
+                />
+              )}
+              {/* The selected piece moving */}
               <div
                 className="absolute inset-0"
-                style={{
-                  zIndex: 20,
-                  transform: `translate(${dx}%, ${dy}%)`,
-                }}
+                style={{ zIndex: 20, transform: `translate(${dx}%, ${dy}%)` }}
               >
                 <div
                   className="absolute inset-0"
@@ -324,51 +285,11 @@ export function AlbumViewport() {
                   {nestedLayers}
                 </div>
               </div>
-              {/* Blue highlight + marching ants on edges and hole */}
-              {showMarchingAnts && (
-                <>
-                  <svg
-                    className="absolute inset-0 w-full h-full"
-                    viewBox="0 0 100 100"
-                    preserveAspectRatio="none"
-                    style={{ zIndex: 16, pointerEvents: "none" }}
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d={`M0,0 L100,0 L100,100 L0,100 Z M${snapEdge(pts[0].x)},${snapEdge(pts[0].y)} ${pts.slice(1).map((pt) => `L${snapEdge(pt.x)},${snapEdge(pt.y)}`).join(" ")} Z`}
-                      fill="rgba(80, 130, 255, 0.2)"
-                    />
-                  </svg>
-                  <svg
-                    className="absolute inset-0 w-full h-full"
-                    viewBox="0 0 100 100"
-                    preserveAspectRatio="none"
-                    style={{ zIndex: 17, pointerEvents: "none" }}
-                  >
-                    {/* Ants around viewport edge */}
-                    <rect
-                      x="0.2" y="0.2" width="99.6" height="99.6"
-                      fill="none" stroke="#6ca6ff" strokeWidth="0.3"
-                      className="marching-ants"
-                    />
-                    {/* Ants around the original selection hole — use snapped coords */}
-                    <polygon
-                      points={pts.map((pt) => `${snapEdge(pt.x)},${snapEdge(pt.y)}`).join(" ")}
-                      fill="none" stroke="#6ca6ff" strokeWidth="0.3"
-                      className="marching-ants"
-                    />
-                  </svg>
-                </>
-              )}
-              {/* SVG outline on the moving piece — hide once select inverse starts */}
-              {p < 0.60 && (
+              {/* SVG outline on the moving piece */}
+              {p < 0.76 && (
                 <svg
                   className="absolute inset-0 w-full h-full"
-                  style={{
-                    zIndex: 55,
-                    pointerEvents: "none",
-                    transform: `translate(${dx}%, ${dy}%)`,
-                  }}
+                  style={{ zIndex: 55, pointerEvents: "none", transform: `translate(${dx}%, ${dy}%)` }}
                 >
                   <SelectionPath
                     points={pts}
@@ -378,46 +299,10 @@ export function AlbumViewport() {
                   />
                 </svg>
               )}
-              {/* Cursor — stays until next scene */}
-              <DragCursor x={cursorX} y={cursorY} style={cursorStyle} />
-            </>
-          );
-        })()}
-
-        {/* Drag-in: new image slides in from right onto checkerboard */}
-        {isDraggingIn && (() => {
-          const p = dragInProgress;
-          const slideX = 100 * (1 - p);
-          const cursorX = slideX + 5;
-          const cursorY = 50;
-
-          return (
-            <>
-              {/* Checkerboard base */}
-              <div
-                className="absolute inset-0 checkerboard"
-                style={{ zIndex: 3 }}
-              />
-              {/* New image sliding in from right — under the Fantasia piece */}
-              <div
-                className="absolute inset-0"
-                style={{
-                  zIndex: 5,
-                  transform: `translateX(${slideX}%)`,
-                }}
-              >
-                <img
-                  src={currentImage}
-                  alt=""
-                  draggable={false}
-                  className="absolute inset-0 w-full h-full select-none"
-                  style={{ objectFit: "fill", pointerEvents: "none" }}
-                />
-              </div>
-              {/* Previous dragged piece on top */}
-              {nestedLayers}
-              {/* Cursor on top of everything */}
-              <DragCursor x={cursorX} y={cursorY} style="grabbing" />
+              {/* Cursor */}
+              {p < 0.92 && (
+                <DragCursor x={cursorX} y={cursorY} style={cursorStyle} />
+              )}
             </>
           );
         })()}
