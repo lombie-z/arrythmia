@@ -118,11 +118,9 @@ export function AlbumViewport() {
           </>
         )}
 
-        {/* Drag interlude: checkerboard hole + moving selection + cursor */}
-        {(phase === "dragging" || dragProgress > 0) && (() => {
-          const dragLayer = layers[2];
-          if (!dragLayer) return null;
-          const pts = dragLayer.selection.points;
+        {/* Drag interlude: checkerboard hole + moving selection piece + cursor */}
+        {phase === "dragging" && activeLayer && (() => {
+          const pts = activeLayer.selection.points;
           const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
           const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
           const targetX = -cx - 10;
@@ -139,22 +137,20 @@ export function AlbumViewport() {
                 className="absolute inset-0 checkerboard"
                 style={{
                   clipPath: toClipPath(pts),
-                  zIndex: 9,
-                  opacity: dragProgress > 0 ? 0.6 : 0,
-                  transition: "opacity 200ms",
+                  zIndex: 15,
                 }}
               />
-              {/* The selection being dragged */}
+              {/* The selected piece being dragged away */}
               <div
                 className="absolute inset-0"
                 style={{
                   clipPath: toClipPath(pts),
-                  zIndex: 11,
+                  zIndex: 20,
                   transform: `translate(${dx}%, ${dy}%)`,
                 }}
               >
                 <img
-                  src={dragLayer.imageUrl}
+                  src={currentImage}
                   alt=""
                   draggable={false}
                   className="absolute inset-0 w-full h-full select-none"
@@ -165,6 +161,22 @@ export function AlbumViewport() {
                   }}
                 />
               </div>
+              {/* SVG outline moving with the piece */}
+              <svg
+                className="absolute inset-0 w-full h-full"
+                style={{
+                  zIndex: 55,
+                  pointerEvents: "none",
+                  transform: `translate(${dx}%, ${dy}%)`,
+                }}
+              >
+                <SelectionPath
+                  points={pts}
+                  drawnSegments={pts.length}
+                  dissolving={false}
+                  playing={false}
+                />
+              </svg>
               {/* Pixelated cursor */}
               <DragCursor x={cursorX} y={cursorY} />
             </>

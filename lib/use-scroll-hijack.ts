@@ -10,7 +10,7 @@ const MOMENTUM_FRICTION = 0.88;
 const MOMENTUM_MIN = 0.4;
 const MOMENTUM_INTERVAL = 40;
 
-const DRAG_AFTER_SELECTION = 3;
+const DRAG_AFTER_SELECTION = 4;
 const DRAG_STEPS = 30;
 
 interface ScrollState {
@@ -53,13 +53,31 @@ export function useScrollHijack() {
 
       if (curPhase === "dragging") {
         const inc = steps / DRAG_STEPS;
-        setState((s) => {
-          const next = Math.min(s.dragProgress + inc, 1);
-          if (next >= 1) {
-            return { ...s, phase: "idle", dragProgress: 1 };
-          }
-          return { ...s, dragProgress: next };
-        });
+        const { dragProgress: curDrag, selectionIndex: curSel } = stateRef.current;
+        const next = Math.min(curDrag + inc, 1);
+
+        if (next >= 1) {
+          setState((s) => ({ ...s, dragProgress: 1 }));
+          animatingRef.current = true;
+          setTimeout(() => {
+            setState((s) => ({ ...s, phase: "masking" }));
+            setTimeout(() => {
+              setState((s) => ({ ...s, phase: "dissolving" }));
+              setTimeout(() => {
+                const nextSel = curSel + 1;
+                setState({
+                  phase: nextSel >= totalSelections ? "complete" : "idle",
+                  selectionIndex: nextSel,
+                  drawnSegments: 0,
+                  dragProgress: 0,
+                });
+                animatingRef.current = false;
+              }, DISSOLVE_DURATION);
+            }, MASK_DURATION);
+          }, 200);
+        } else {
+          setState((s) => ({ ...s, dragProgress: next }));
+        }
         return;
       }
 
@@ -80,20 +98,19 @@ export function useScrollHijack() {
         setState((s) => ({ ...s, phase: "closing", drawnSegments: pointCount }));
 
         setTimeout(() => {
-          setState((s) => ({ ...s, phase: "masking" }));
-          setTimeout(() => {
-            setState((s) => ({ ...s, phase: "dissolving" }));
+          if (selectionIndex === DRAG_AFTER_SELECTION - 1) {
+            setState((s) => ({
+              ...s,
+              phase: "dragging",
+              dragProgress: 0,
+            }));
+            animatingRef.current = false;
+          } else {
+            setState((s) => ({ ...s, phase: "masking" }));
             setTimeout(() => {
-              const nextSel = selectionIndex + 1;
-              if (selectionIndex === DRAG_AFTER_SELECTION - 1) {
-                setState({
-                  phase: "dragging",
-                  selectionIndex: nextSel,
-                  drawnSegments: 0,
-                  dragProgress: 0,
-                });
-                animatingRef.current = false;
-              } else {
+              setState((s) => ({ ...s, phase: "dissolving" }));
+              setTimeout(() => {
+                const nextSel = selectionIndex + 1;
                 setState({
                   phase: nextSel >= totalSelections ? "complete" : "idle",
                   selectionIndex: nextSel,
@@ -101,9 +118,9 @@ export function useScrollHijack() {
                   dragProgress: 0,
                 });
                 animatingRef.current = false;
-              }
-            }, DISSOLVE_DURATION);
-          }, MASK_DURATION);
+              }, DISSOLVE_DURATION);
+            }, MASK_DURATION);
+          }
         }, 50);
       }
     },
