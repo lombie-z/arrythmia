@@ -1,6 +1,25 @@
 "use client";
 
-export function DragCursor({ x, y }: { x: number; y: number }) {
+type CursorStyle = "default" | "grab" | "grabbing";
+
+const CURSORS: Record<CursorStyle, string> = {
+  default:
+    "M0,0 L0,11 L3,8 L6,13 L8,12 L5,7 L9,7 Z",
+  grab:
+    "M4,8 L4,4 L6,4 L6,3 L8,3 L8,4 L10,4 L10,3 L12,3 L12,4 L14,4 L14,5 L15,5 L15,10 L14,13 L4,13 L3,11 L3,9 Z",
+  grabbing:
+    "M4,8 L4,6 L6,6 L6,5 L8,5 L8,6 L10,6 L10,5 L12,5 L12,6 L14,6 L14,7 L15,7 L15,12 L14,14 L4,14 L3,12 L3,9 Z",
+};
+
+export function DragCursor({
+  x,
+  y,
+  style,
+}: {
+  x: number;
+  y: number;
+  style: CursorStyle;
+}) {
   return (
     <div
       className="absolute pointer-events-none"
@@ -10,51 +29,16 @@ export function DragCursor({ x, y }: { x: number; y: number }) {
         zIndex: 90,
         transform: "translate(-2px, -2px)",
         imageRendering: "pixelated",
+        transition: "left 80ms linear, top 80ms linear",
       }}
     >
-      <svg width="24" height="24" viewBox="0 0 16 16" shapeRendering="crispEdges">
-        <rect x="0" y="0" width="1" height="1" fill="white" />
-        <rect x="0" y="1" width="1" height="1" fill="white" />
-        <rect x="1" y="1" width="1" height="1" fill="black" />
-        <rect x="0" y="2" width="1" height="1" fill="white" />
-        <rect x="1" y="2" width="1" height="1" fill="black" />
-        <rect x="2" y="2" width="1" height="1" fill="black" />
-        <rect x="0" y="3" width="1" height="1" fill="white" />
-        <rect x="1" y="3" width="1" height="1" fill="black" />
-        <rect x="2" y="3" width="1" height="1" fill="white" />
-        <rect x="3" y="3" width="1" height="1" fill="black" />
-        <rect x="0" y="4" width="1" height="1" fill="white" />
-        <rect x="1" y="4" width="1" height="1" fill="black" />
-        <rect x="2" y="4" width="1" height="1" fill="white" />
-        <rect x="3" y="4" width="1" height="1" fill="white" />
-        <rect x="4" y="4" width="1" height="1" fill="black" />
-        <rect x="0" y="5" width="1" height="1" fill="white" />
-        <rect x="1" y="5" width="1" height="1" fill="black" />
-        <rect x="2" y="5" width="1" height="1" fill="white" />
-        <rect x="3" y="5" width="1" height="1" fill="white" />
-        <rect x="4" y="5" width="1" height="1" fill="white" />
-        <rect x="5" y="5" width="1" height="1" fill="black" />
-        <rect x="0" y="6" width="1" height="1" fill="white" />
-        <rect x="1" y="6" width="1" height="1" fill="black" />
-        <rect x="2" y="6" width="1" height="1" fill="white" />
-        <rect x="3" y="6" width="1" height="1" fill="black" />
-        <rect x="4" y="6" width="1" height="1" fill="black" />
-        <rect x="5" y="6" width="1" height="1" fill="black" />
-        <rect x="0" y="7" width="1" height="1" fill="white" />
-        <rect x="1" y="7" width="1" height="1" fill="black" />
-        <rect x="3" y="7" width="1" height="1" fill="white" />
-        <rect x="4" y="7" width="1" height="1" fill="black" />
-        <rect x="0" y="8" width="1" height="1" fill="white" />
-        <rect x="1" y="8" width="1" height="1" fill="black" />
-        <rect x="4" y="8" width="1" height="1" fill="white" />
-        <rect x="5" y="8" width="1" height="1" fill="black" />
-        <rect x="0" y="9" width="1" height="1" fill="white" />
-        <rect x="1" y="9" width="1" height="1" fill="black" />
-        <rect x="5" y="9" width="1" height="1" fill="white" />
-        <rect x="6" y="9" width="1" height="1" fill="black" />
-        <rect x="0" y="10" width="1" height="1" fill="white" />
-        <rect x="1" y="10" width="1" height="1" fill="black" />
-        <rect x="0" y="11" width="1" height="1" fill="black" />
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 16 16"
+        shapeRendering="crispEdges"
+      >
+        <path d={CURSORS[style]} fill="white" stroke="black" strokeWidth={0.8} />
       </svg>
     </div>
   );

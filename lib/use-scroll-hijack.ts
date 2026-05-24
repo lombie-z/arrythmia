@@ -60,21 +60,15 @@ export function useScrollHijack() {
           setState((s) => ({ ...s, dragProgress: 1 }));
           animatingRef.current = true;
           setTimeout(() => {
-            setState((s) => ({ ...s, phase: "masking" }));
-            setTimeout(() => {
-              setState((s) => ({ ...s, phase: "dissolving" }));
-              setTimeout(() => {
-                const nextSel = curSel + 1;
-                setState({
-                  phase: nextSel >= totalSelections ? "complete" : "idle",
-                  selectionIndex: nextSel,
-                  drawnSegments: 0,
-                  dragProgress: 0,
-                });
-                animatingRef.current = false;
-              }, DISSOLVE_DURATION);
-            }, MASK_DURATION);
-          }, 200);
+            const nextSel = curSel + 1;
+            setState({
+              phase: nextSel >= totalSelections ? "complete" : "idle",
+              selectionIndex: nextSel,
+              drawnSegments: 0,
+              dragProgress: 0,
+            });
+            animatingRef.current = false;
+          }, 300);
         } else {
           setState((s) => ({ ...s, dragProgress: next }));
         }

@@ -28,10 +28,6 @@ function toClipPath(points: AnchorPoint[]): string {
   return `polygon(${points.map((p) => `${snapEdge(p.x)}% ${snapEdge(p.y)}%`).join(", ")})`;
 }
 
-function offsetPoints(points: AnchorPoint[], dx: number, dy: number): AnchorPoint[] {
-  return points.map((p) => ({ x: p.x + dx, y: p.y + dy }));
-}
-
 function buildNestedLayers(
   completed: Layer[],
   draggedIndex?: number,
@@ -41,15 +37,18 @@ function buildNestedLayers(
   for (let i = 0; i < completed.length; i++) {
     const layer = completed[i];
     const isDragged = i === draggedIndex;
-    const pts = isDragged
-      ? offsetPoints(layer.selection.points, DRAG_TARGET.dx, DRAG_TARGET.dy)
-      : layer.selection.points;
 
     nested = (
       <div
         key={layer.selection.id}
         className="absolute inset-0"
-        style={{ clipPath: toClipPath(pts), zIndex: 10 }}
+        style={{
+          clipPath: toClipPath(layer.selection.points),
+          zIndex: 10,
+          transform: isDragged
+            ? `translate(${DRAG_TARGET.dx}%, ${DRAG_TARGET.dy}%)`
+            : undefined,
+        }}
       >
         <img
           src={layer.imageUrl}
@@ -142,23 +141,60 @@ export function AlbumViewport() {
           const pts = activeLayer.selection.points;
           const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
           const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
-          const dx = DRAG_TARGET.dx * dragProgress;
-          const dy = DRAG_TARGET.dy * dragProgress;
-          const cursorX = cx + dx;
-          const cursorY = cy + dy;
+
+          // Cursor phases: approach (0-0.08), grab (0.08-0.12), drag (0.12-0.88), release (0.88-0.92), exit (0.92-1)
+          const approach = Math.min(1, dragProgress / 0.08);
+          const isDragPhase = dragProgress > 0.12 && dragProgress < 0.88;
+          const isExiting = dragProgress >= 0.92;
+          const dragT = Math.max(0, Math.min(1, (dragProgress - 0.12) / 0.76));
+
+          const dx = DRAG_TARGET.dx * dragT;
+          const dy = DRAG_TARGET.dy * dragT;
+
+          // Cursor position: enters from top-right, moves to center, drags, exits bottom-left
+          const startX = cx + 30;
+          const startY = cy - 20;
+          const endX = cx + dx - 15;
+          const endY = cy + dy + 15;
+          let cursorX: number, cursorY: number;
+          let cursorStyle: "default" | "grab" | "grabbing";
+
+          if (dragProgress < 0.08) {
+            cursorX = startX + (cx - startX) * approach;
+            cursorY = startY + (cy - startY) * approach;
+            cursorStyle = "default";
+          } else if (dragProgress < 0.12) {
+            cursorX = cx;
+            cursorY = cy;
+            cursorStyle = "grab";
+          } else if (dragProgress < 0.88) {
+            cursorX = cx + dx;
+            cursorY = cy + dy;
+            cursorStyle = "grabbing";
+          } else if (dragProgress < 0.92) {
+            cursorX = cx + DRAG_TARGET.dx;
+            cursorY = cy + DRAG_TARGET.dy;
+            cursorStyle = "grab";
+          } else {
+            const exitT = (dragProgress - 0.92) / 0.08;
+            cursorX = (cx + DRAG_TARGET.dx) + (endX - (cx + DRAG_TARGET.dx)) * exitT;
+            cursorY = (cy + DRAG_TARGET.dy) + (endY - (cy + DRAG_TARGET.dy)) * exitT;
+            cursorStyle = "default";
+          }
 
           return (
             <>
-              {/* Checkerboard where the selection was */}
-              <div
-                className="absolute inset-0 checkerboard"
-                style={{
-                  clipPath: toClipPath(pts),
-                  zIndex: 15,
-                  opacity: Math.min(1, dragProgress * 5),
-                }}
-              />
-              {/* The selected piece being dragged — clip + image move together */}
+              {/* Checkerboard where the selection was — visible once dragging starts */}
+              {dragProgress > 0.12 && (
+                <div
+                  className="absolute inset-0 checkerboard"
+                  style={{
+                    clipPath: toClipPath(pts),
+                    zIndex: 15,
+                  }}
+                />
+              )}
+              {/* The selected piece — moves during drag phase */}
               <div
                 className="absolute inset-0"
                 style={{
@@ -177,11 +213,10 @@ export function AlbumViewport() {
                     className="absolute inset-0 w-full h-full select-none"
                     style={{ objectFit: "fill", pointerEvents: "none" }}
                   />
-                  {/* Include earlier selections inside the moving piece */}
                   {nestedLayers}
                 </div>
               </div>
-              {/* SVG outline moving with the piece */}
+              {/* SVG outline on the moving piece */}
               <svg
                 className="absolute inset-0 w-full h-full"
                 style={{
@@ -197,8 +232,10 @@ export function AlbumViewport() {
                   playing={false}
                 />
               </svg>
-              {/* Pixelated cursor */}
-              <DragCursor x={cursorX} y={cursorY} />
+              {/* Cursor with style transitions */}
+              {!isExiting || dragProgress < 0.99 ? (
+                <DragCursor x={cursorX} y={cursorY} style={cursorStyle} />
+              ) : null}
             </>
           );
         })()}
