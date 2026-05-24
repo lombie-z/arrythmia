@@ -95,8 +95,14 @@ export function useScrollHijack() {
       let next: number;
 
       if (isCollageLayer(selectionIndex)) {
-        const collageSteps = Math.max(1, Math.floor(steps / 40));
-        next = Math.min(drawnSegments + collageSteps, pointCount);
+        momentumRef.current = 0;
+        if (momentumTimer.current) {
+          clearInterval(momentumTimer.current);
+          momentumTimer.current = null;
+        }
+        animatingRef.current = true;
+        next = Math.min(drawnSegments + 1, pointCount);
+        setTimeout(() => { animatingRef.current = false; }, 400);
       } else {
         const progress = drawnSegments / pointCount;
         const remaining = 1 - (drawnSegments + steps) / pointCount;
