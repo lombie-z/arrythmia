@@ -111,9 +111,9 @@ export function AlbumViewport() {
           aspectRatio: `${ASPECT_RATIO}`,
         }}
       >
-        {maskApplied && <ImageLayer imageUrl={nextImage} zIndex={1} visible />}
+        {!isDraggingIn && maskApplied && <ImageLayer imageUrl={nextImage} zIndex={1} visible />}
 
-        {maskApplied && activeLayer ? (
+        {!isDraggingIn && maskApplied && activeLayer ? (
           <div
             className="absolute inset-0"
             style={{
@@ -130,12 +130,12 @@ export function AlbumViewport() {
             />
             {nestedLayers}
           </div>
-        ) : (
+        ) : !isDraggingIn ? (
           <>
             <ImageLayer imageUrl={currentImage} zIndex={2} visible />
             {nestedLayers}
           </>
-        )}
+        ) : null}
 
         {/* Drag interlude: checkerboard hole + moving selection piece + cursor */}
         {isDragging && activeLayer && (() => {
@@ -333,11 +333,13 @@ export function AlbumViewport() {
 
           return (
             <>
-              {/* Checkerboard base — above nested layers so prev selection doesn't show */}
+              {/* Checkerboard base */}
               <div
                 className="absolute inset-0 checkerboard"
-                style={{ zIndex: 15 }}
+                style={{ zIndex: 3 }}
               />
+              {/* Previous dragged piece visible on the checkerboard */}
+              {nestedLayers}
               {/* New image sliding in from right */}
               <div
                 className="absolute inset-0"
