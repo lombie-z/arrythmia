@@ -152,7 +152,7 @@ export function AlbumViewport() {
               );
             })() : nestedLayers}
           </>
-        ) : null}
+        )}
 
         {/* Collage layer: pieces appear one at a time */}
         {activeLayer?.collageItems && !isDragging && drawnSegments > 0 && (() => {
