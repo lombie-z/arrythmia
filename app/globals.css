@@ -130,6 +130,16 @@ body {
   transform-style: preserve-3d;
 }
 
+.marching-ants {
+  stroke-dasharray: 6 4;
+  animation: march 0.4s linear infinite;
+}
+
+@keyframes march {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -10; }
+}
+
 .checkerboard {
   background-image:
     linear-gradient(45deg, #ccc 25%, transparent 25%),

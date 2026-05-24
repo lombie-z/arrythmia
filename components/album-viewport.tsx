@@ -141,49 +141,96 @@ export function AlbumViewport() {
           const pts = activeLayer.selection.points;
           const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
           const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+          const p = dragProgress;
 
-          // Cursor phases: approach (0-0.2), hover (0.2-0.25), drag (0.25-0.8), release (0.8-0.85), exit (0.85-1)
-          const dragT = Math.max(0, Math.min(1, (dragProgress - 0.25) / 0.55));
+          /*
+           * Timeline:
+           * 0.00-0.12  Cursor approaches from top-right
+           * 0.12-0.16  Cursor hovers selection (grab)
+           * 0.16-0.52  Cursor drags piece to bottom-left (grabbing)
+           * 0.52-0.55  Cursor releases (grab)
+           * 0.55-0.60  Cursor moves to center of remaining area (default)
+           * 0.60-0.65  "Select inverse" — marching ants appear on rest of image
+           * 0.65-0.75  Marching ants hold
+           * 0.75-0.82  "Delete" — rest of image becomes checkerboard
+           * 0.82-0.90  Cursor exits left
+           * 0.90-1.00  Hold, then transition
+           */
 
+          const dragT = Math.max(0, Math.min(1, (p - 0.16) / 0.36));
           const dx = DRAG_TARGET.dx * dragT;
           const dy = DRAG_TARGET.dy * dragT;
 
-          // Cursor starts off-screen top-left, exits off-screen left
-          const startX = -5;
+          const showHoleCheckerboard = p > 0.16;
+          const showMarchingAnts = p >= 0.60 && p < 0.82;
+          const showFullCheckerboard = p >= 0.75;
+          const deleteProgress = p >= 0.75 ? Math.min(1, (p - 0.75) / 0.07) : 0;
+
+          // Cursor
+          const startX = 105;
           const startY = -5;
-          const endX = -10;
-          const endY = cy + DRAG_TARGET.dy;
+          const restX = 75;
+          const restY = 30;
           let cursorX: number, cursorY: number;
           let cursorStyle: "default" | "grab" | "grabbing";
 
-          if (dragProgress < 0.2) {
-            const t = dragProgress / 0.2;
+          if (p < 0.12) {
+            const t = p / 0.12;
             cursorX = startX + (cx - startX) * t;
             cursorY = startY + (cy - startY) * t;
             cursorStyle = "default";
-          } else if (dragProgress < 0.25) {
+          } else if (p < 0.16) {
             cursorX = cx;
             cursorY = cy;
             cursorStyle = "grab";
-          } else if (dragProgress < 0.8) {
+          } else if (p < 0.52) {
             cursorX = cx + dx;
             cursorY = cy + dy;
             cursorStyle = "grabbing";
-          } else if (dragProgress < 0.85) {
+          } else if (p < 0.55) {
             cursorX = cx + DRAG_TARGET.dx;
             cursorY = cy + DRAG_TARGET.dy;
             cursorStyle = "grab";
+          } else if (p < 0.60) {
+            const t = (p - 0.55) / 0.05;
+            cursorX = (cx + DRAG_TARGET.dx) + (restX - (cx + DRAG_TARGET.dx)) * t;
+            cursorY = (cy + DRAG_TARGET.dy) + (restY - (cy + DRAG_TARGET.dy)) * t;
+            cursorStyle = "default";
+          } else if (p < 0.82) {
+            cursorX = restX;
+            cursorY = restY;
+            cursorStyle = "default";
+          } else if (p < 0.90) {
+            const t = (p - 0.82) / 0.08;
+            cursorX = restX + (-10 - restX) * t;
+            cursorY = restY;
+            cursorStyle = "default";
           } else {
-            const t = (dragProgress - 0.85) / 0.15;
-            cursorX = (cx + DRAG_TARGET.dx) + (endX - (cx + DRAG_TARGET.dx)) * t;
-            cursorY = (cy + DRAG_TARGET.dy) + (endY - (cy + DRAG_TARGET.dy)) * t;
+            cursorX = -10;
+            cursorY = restY;
             cursorStyle = "default";
           }
 
+          // Dragged piece points offset for marching ants inversion
+          const draggedPts = pts.map((pt) => ({
+            x: pt.x + DRAG_TARGET.dx * dragT,
+            y: pt.y + DRAG_TARGET.dy * dragT,
+          }));
+
           return (
             <>
-              {/* Checkerboard where the selection was — visible once grabbing starts */}
-              {dragProgress > 0.25 && (
+              {/* Full-screen checkerboard "delete" — fades in behind everything */}
+              {showFullCheckerboard && (
+                <div
+                  className="absolute inset-0 checkerboard"
+                  style={{
+                    zIndex: 3,
+                    opacity: deleteProgress,
+                  }}
+                />
+              )}
+              {/* Checkerboard in the original selection hole */}
+              {showHoleCheckerboard && (
                 <div
                   className="absolute inset-0 checkerboard"
                   style={{
@@ -214,6 +261,33 @@ export function AlbumViewport() {
                   {nestedLayers}
                 </div>
               </div>
+              {/* Marching ants — "select inverse" highlight on remaining image */}
+              {showMarchingAnts && (
+                <svg
+                  className="absolute inset-0 w-full h-full"
+                  style={{ zIndex: 56, pointerEvents: "none" }}
+                >
+                  {/* Border around viewport edge */}
+                  <rect
+                    x="0.5%"
+                    y="0.5%"
+                    width="99%"
+                    height="99%"
+                    fill="none"
+                    stroke="#6ca6ff"
+                    strokeWidth={1.5}
+                    className="marching-ants"
+                  />
+                  {/* Border around dragged piece (exclusion) */}
+                  <polygon
+                    points={draggedPts.map((pt) => `${pt.x}%,${pt.y}%`).join(" ")}
+                    fill="none"
+                    stroke="#6ca6ff"
+                    strokeWidth={1.5}
+                    className="marching-ants"
+                  />
+                </svg>
+              )}
               {/* SVG outline on the moving piece */}
               <svg
                 className="absolute inset-0 w-full h-full"
@@ -230,8 +304,8 @@ export function AlbumViewport() {
                   playing={false}
                 />
               </svg>
-              {/* Cursor with style transitions */}
-              {dragProgress < 0.99 && (
+              {/* Cursor */}
+              {p < 0.90 && (
                 <DragCursor x={cursorX} y={cursorY} style={cursorStyle} />
               )}
             </>
