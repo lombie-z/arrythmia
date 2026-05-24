@@ -113,10 +113,9 @@ export function useScrollHijack() {
             momentumTimer.current = null;
           }
           setTimeout(() => {
-            const nextSel = curSel + 1;
             setState({
-              phase: nextSel >= totalSelections ? "complete" : "idle",
-              selectionIndex: nextSel,
+              phase: curSel >= totalSelections ? "complete" : "idle",
+              selectionIndex: curSel,
               drawnSegments: 0,
               dragProgress: 0,
               dragInProgress: 0,
@@ -335,28 +334,52 @@ export function useScrollHijack() {
 
       if (drawnSegments > 0) {
         if (isCollageLayer(selectionIndex)) {
-          // Retreat one tick at a time for collage, with cooldown matching the current item
           momentumRef.current = 0;
           if (momentumTimer.current) {
             clearInterval(momentumTimer.current);
             momentumTimer.current = null;
           }
-          animatingRef.current = true;
-          const next = Math.max(drawnSegments - 1, 0);
 
           const layer = ALBUM_DATA.layers[selectionIndex];
           const items = layer.collageItems!;
+          // Find where we are and if it's a trail
           let tickAcc = 0;
           let isTrailTick = false;
+          let trailStartTick = 0;
           for (const item of items) {
             const weight = item.trail ? item.trail.count : 1;
-            if ((next > 0 ? next - 1 : 0) < tickAcc + weight) {
+            if (drawnSegments <= tickAcc + weight) {
               isTrailTick = !!item.trail;
+              trailStartTick = tickAcc;
               break;
             }
             tickAcc += weight;
           }
-          setTimeout(() => { animatingRef.current = false; }, isTrailTick ? 20 : 400);
+
+          if (isTrailTick) {
+            // Auto-reverse all trail ticks back to the start of trails
+            // Find where the first trail item starts
+            let firstTrailTick = 0;
+            for (const item of items) {
+              if (item.trail) break;
+              firstTrailTick += 1;
+            }
+            animatingRef.current = true;
+            const autoRetreat = setInterval(() => {
+              const { drawnSegments: cur } = stateRef.current;
+              if (cur <= firstTrailTick) {
+                clearInterval(autoRetreat);
+                animatingRef.current = false;
+                return;
+              }
+              setState((s) => ({ ...s, phase: "drawing", drawnSegments: cur - 1 }));
+            }, 30);
+            return;
+          }
+
+          animatingRef.current = true;
+          const next = Math.max(drawnSegments - 1, 0);
+          setTimeout(() => { animatingRef.current = false; }, 400);
           setState((s) => ({ ...s, phase: "drawing", drawnSegments: next }));
         } else {
           const next = Math.max(drawnSegments - steps, 0);
