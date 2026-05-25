@@ -26,12 +26,7 @@ export function VhsOverlay({
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const container = containerRef.current;
-
-    if (!active) {
-      if (container) container.style.transform = "";
-      return;
-    }
+    if (!active) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -77,13 +72,13 @@ export function VhsOverlay({
         });
 
         const jitter = (Math.random() - 0.5) * (intense ? 14 : 6);
-        if (container) container.style.transform = `translateX(${jitter}px)`;
+        if (canvas) canvas.style.transform = `translateX(${jitter}px)`;
       }
       if (glitching && now >= glitchEndTime) {
         glitching = false;
         nextGlitchTime = now + 400 + Math.random() * 2500;
         bars = [];
-        if (container) container.style.transform = "";
+        if (canvas) canvas.style.transform = "";
       }
 
       ctx.clearRect(0, 0, w, h);
@@ -129,7 +124,7 @@ export function VhsOverlay({
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
-      if (container) container.style.transform = "";
+      if (canvas) canvas.style.transform = "";
     };
   }, [active, containerRef]);
 

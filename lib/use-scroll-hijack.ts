@@ -38,6 +38,7 @@ export function useScrollHijack() {
 
   const animatingRef = useRef(false);
   const bsodSeenRef = useRef(false);
+  const bsodShutdownRef = useRef(false);
   const touchStartRef = useRef(0);
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -106,17 +107,20 @@ export function useScrollHijack() {
 
       if (curPhase === "bsod") {
         const { bsodProgress: curBsod, selectionIndex: curSel } = stateRef.current;
+        const isTouch = "ontouchstart" in window;
         let slowdown: number;
-        if (curBsod >= 0.95) {
-          slowdown = 0.001;
-        } else if (curBsod >= 0.85) {
-          slowdown = 0.005;
-        } else if (curBsod >= 0.7) {
-          slowdown = 0.03;
-        } else if (curBsod >= 0.5) {
-          slowdown = 0.1;
+        if (isTouch) {
+          if (curBsod >= 0.95) slowdown = 0.008;
+          else if (curBsod >= 0.85) slowdown = 0.02;
+          else if (curBsod >= 0.7) slowdown = 0.06;
+          else if (curBsod >= 0.5) slowdown = 0.15;
+          else slowdown = 1;
         } else {
-          slowdown = 1;
+          if (curBsod >= 0.95) slowdown = 0.001;
+          else if (curBsod >= 0.85) slowdown = 0.005;
+          else if (curBsod >= 0.7) slowdown = 0.03;
+          else if (curBsod >= 0.5) slowdown = 0.1;
+          else slowdown = 1;
         }
         if (curBsod >= 0.5) {
           momentumRef.current = 0;
@@ -128,7 +132,8 @@ export function useScrollHijack() {
         const inc = (steps / BSOD_STEPS) * slowdown;
         const next = Math.min(curBsod + inc, 1);
 
-        if (next >= 1) {
+        if (next >= 1 && !bsodShutdownRef.current) {
+          bsodShutdownRef.current = true;
           setState((s) => ({ ...s, bsodProgress: 1 }));
           animatingRef.current = true;
           momentumRef.current = 0;
@@ -139,8 +144,13 @@ export function useScrollHijack() {
           }
           // Hold 1800ms + CRT off 400ms + dark 1600ms = 3800ms
           // CRT-on is a visual overlay that doesn't block scroll
-          setTimeout(() => {
-            // Flush any accumulated momentum so stale scroll doesn't fire
+          // Use both setTimeout AND rAF polling as safety net
+          // (mobile browsers throttle setTimeout in background/low-power)
+          const shutdownStart = performance.now();
+          let shutdownDone = false;
+          const unlockScroll = () => {
+            if (shutdownDone) return;
+            shutdownDone = true;
             momentumRef.current = 0;
             if (momentumTimer.current) {
               clearInterval(momentumTimer.current);
@@ -154,8 +164,16 @@ export function useScrollHijack() {
               dragInProgress: 0,
               bsodProgress: 0,
             });
+            bsodShutdownRef.current = false;
             animatingRef.current = false;
-          }, 3800);
+          };
+          setTimeout(unlockScroll, 3800);
+          const pollShutdown = () => {
+            if (shutdownDone) return;
+            if (performance.now() - shutdownStart >= 3800) { unlockScroll(); return; }
+            requestAnimationFrame(pollShutdown);
+          };
+          requestAnimationFrame(pollShutdown);
         } else {
           setState((s) => ({ ...s, bsodProgress: next }));
         }
