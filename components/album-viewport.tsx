@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useScrollHijack } from "@/lib/use-scroll-hijack";
 import { ALBUM_DATA } from "@/lib/album-data";
 import { ASPECT_RATIO } from "@/lib/constants";
@@ -17,6 +17,82 @@ import { BsodScreen } from "./bsod-screen";
 import { VhsOverlay } from "./vhs-overlay";
 import { StaticNoise } from "./static-noise";
 
+
+/** CRT turn-on overlay after BSOD shutdown — purely visual, doesn't block scroll */
+function ShutdownTransition({ onDone }: { onDone: () => void }) {
+  const [ms, setMs] = useState(0);
+  const startRef = useRef(performance.now());
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+
+  useEffect(() => {
+    let raf: number;
+    const tick = () => {
+      const elapsed = performance.now() - startRef.current;
+      if (elapsed > 1200) {
+        onDoneRef.current();
+        return;
+      }
+      setMs(elapsed);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  const dotT = ms < 200 ? ms / 200 : -1;
+  const expandT = ms >= 200 && ms < 400 ? (ms - 200) / 200 : -1;
+  const fadeT = ms >= 400 ? Math.max(0, 1 - (ms - 400) / 800) : 1;
+
+  let sx = 1;
+  let sy = 1;
+  let br = 0;
+  if (dotT >= 0) {
+    sy = 0.005;
+    sx = 0.01 + dotT * 0.99;
+    br = 1 - dotT * 0.2;
+  } else if (expandT >= 0) {
+    sy = 0.005 + expandT * 0.995;
+    sx = 1;
+    br = Math.max(0, 0.8 - expandT * 0.8);
+  }
+  const showLine = dotT >= 0 || expandT >= 0;
+
+  return (
+    <div
+      className="absolute inset-0"
+      style={{
+        zIndex: 100,
+        background: "rgb(2, 8, 4)",
+        opacity: fadeT,
+        pointerEvents: "none",
+      }}
+    >
+      {ms < 400 && (
+        <div className="absolute inset-0" style={{ opacity: 0.25 }}>
+          <StaticNoise />
+        </div>
+      )}
+      {showLine && (
+        <div
+          className="absolute"
+          style={{
+            left: "50%",
+            top: "50%",
+            width: `${sx * 100}%`,
+            height: `${Math.max(2, sy * 100)}%`,
+            transform: "translate(-50%, -50%)",
+            background: `rgb(${Math.round(200 + br * 55)}, ${Math.round(200 + br * 55)}, ${Math.round(210 + br * 45)})`,
+            boxShadow:
+              br > 0.3
+                ? `0 0 ${br * 40}px ${br * 15}px rgba(255,255,255,${br * 0.4})`
+                : "none",
+          }}
+        />
+      )}
+    </div>
+  );
+}
 
 const EDGE_SNAP = 1;
 const DRAG_LAYER_INDEX = 3;
@@ -101,6 +177,24 @@ export function AlbumViewport() {
   const [loaded, setLoaded] = useState(false);
   const onLoadDone = useCallback(() => setLoaded(true), []);
 
+  // CRT turn-on transition after BSOD unmounts
+  const [showCrtOn, setShowCrtOn] = useState(false);
+  const prevPhaseRef = useRef(phase);
+  // Reverse fade when leaving complete
+  const [showReverseFade, setShowReverseFade] = useState(false);
+  useEffect(() => {
+    if (prevPhaseRef.current === "bsod" && phase !== "bsod") {
+      setShowCrtOn(true);
+    }
+    if (prevPhaseRef.current === "complete" && phase !== "complete") {
+      setShowReverseFade(true);
+      const timer = setTimeout(() => setShowReverseFade(false), 1500);
+      prevPhaseRef.current = phase;
+      return () => clearTimeout(timer);
+    }
+    prevPhaseRef.current = phase;
+  }, [phase]);
+
   const isDragging = phase === "dragging";
   const dragDone = selectionIndex > DRAG_LAYER_INDEX;
   const nestedLayers = buildNestedLayers(
@@ -161,28 +255,47 @@ export function AlbumViewport() {
           </div>
         ) : (
           <>
-            {GRADIENT_LAYERS.has(selectionIndex)
-              ? <div className="absolute inset-0" style={{ zIndex: 2, background: "linear-gradient(to left, #16222A, #3A6073)", backgroundImage: "url(/images/static.gif)", backgroundSize: "cover" }} />
-              : <ImageLayer imageUrl={currentImage} zIndex={2} visible />
-            }
             {isComplete ? (() => {
               const lastReal = [...completedLayers].reverse().find((l) => !l.collageItems);
-              if (!lastReal) return null;
+              const prevImage = lastReal?.imageUrl ?? currentImage;
               return (
-                <div
-                  className="absolute inset-0"
-                  style={{ clipPath: toClipPath(lastReal.selection.points), zIndex: 10 }}
-                >
+                <>
+                  {/* Previous section's image stays as base — no change from drawing */}
+                  <ImageLayer imageUrl={prevImage} zIndex={2} visible />
+                  {/* Final image fades in on top, behind the selection */}
                   <img
-                    src={lastReal.imageUrl}
+                    src={finalImage}
                     alt=""
                     draggable={false}
-                    className="absolute inset-0 w-full h-full select-none"
-                    style={{ objectFit: "fill", pointerEvents: "none" }}
+                    className="absolute inset-0 w-full h-full select-none complete-bg-fadein"
+                    style={{ objectFit: "fill", zIndex: 5, pointerEvents: "none" }}
                   />
-                </div>
+                  {/* Clipped selection — full opacity always, no fade */}
+                  {lastReal && (
+                    <div
+                      className="absolute inset-0"
+                      style={{ clipPath: toClipPath(lastReal.selection.points), zIndex: 10 }}
+                    >
+                      <img
+                        src={lastReal.imageUrl}
+                        alt=""
+                        draggable={false}
+                        className="absolute inset-0 w-full h-full select-none"
+                        style={{ objectFit: "fill", pointerEvents: "none" }}
+                      />
+                    </div>
+                  )}
+                </>
               );
-            })() : nestedLayers}
+            })() : (
+              <>
+                {GRADIENT_LAYERS.has(selectionIndex)
+                  ? <div className="absolute inset-0" style={{ zIndex: 2, background: "linear-gradient(to left, #16222A, #3A6073)", backgroundImage: "url(/images/static.gif)", backgroundSize: "cover" }} />
+                  : <ImageLayer imageUrl={currentImage} zIndex={2} visible />
+                }
+                {nestedLayers}
+              </>
+            )}
           </>
         )}
 
@@ -472,10 +585,15 @@ export function AlbumViewport() {
         {/* BSOD transition between sections 7 and 8 */}
         {phase === "bsod" && <BsodScreen progress={bsodProgress} />}
 
-        {/* SVG selection outlines */}
+        {/* CRT turn-on after BSOD — scroll works underneath */}
+        {showCrtOn && (
+          <ShutdownTransition onDone={() => setShowCrtOn(false)} />
+        )}
+
+        {/* SVG selection outlines — lower z during complete so fade covers them */}
         <svg
           className="absolute inset-0 w-full h-full"
-          style={{ zIndex: 50, pointerEvents: "none" }}
+          style={{ zIndex: isComplete ? 8 : 50, pointerEvents: "none" }}
         >
           {isComplete && completedLayers.length > 0 && (() => {
             const nonCollage = completedLayers.filter((l) => !l.collageItems);

@@ -36,7 +36,12 @@ export function RetroPlayer({
       : track.audioSrc.replace("/hd/", "/lo/")
     : null;
 
+  const prevSrcRef = useRef<string | null>(null);
+
   useEffect(() => {
+    if (audioSrc && audioSrc === prevSrcRef.current && audioRef.current) return;
+    prevSrcRef.current = audioSrc;
+
     const prev = audioRef.current;
     const shouldContinue = wasPlayingRef.current;
 
@@ -113,7 +118,7 @@ export function RetroPlayer({
   const progressPct = duration > 0 ? (progress / duration) * 100 : 0;
 
   return (
-    <div className="fixed top-2 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] sm:absolute sm:left-auto sm:translate-x-0 sm:top-4 sm:right-4 sm:w-auto" style={{ zIndex: 200 }} data-player>
+    <div className="fixed top-2 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] sm:absolute sm:left-auto sm:translate-x-0 sm:top-4 sm:right-4 sm:w-auto player-glitch-in" style={{ zIndex: 200 }} data-player>
       <div
         className="flex flex-col gap-2 sm:gap-1.5 px-4 py-3 sm:py-3 font-mono text-sm sm:text-xs"
         style={{

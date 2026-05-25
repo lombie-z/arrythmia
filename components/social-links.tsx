@@ -2,7 +2,7 @@
 
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
 function FlowerModel({ hovered }: { hovered: boolean }) {
@@ -68,13 +68,21 @@ function noEvents() {
 
 export function SocialLinks({ visible }: { visible: boolean }) {
   const [flowerHovered, setFlowerHovered] = useState(false);
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    if (!visible) { setShow(false); return; }
+    const timer = setTimeout(() => setShow(true), 60);
+    return () => clearTimeout(timer);
+  }, [visible]);
 
   return (
     <div
       className="absolute inset-0 flex items-center"
       style={{
         zIndex: 40,
-        opacity: visible ? 1 : 0,
+        opacity: show ? 1 : 0,
+        transition: show ? "opacity 1.5s ease-in" : "none",
         pointerEvents: visible ? "auto" : "none",
         justifyContent: "center",
         paddingLeft: "36%",

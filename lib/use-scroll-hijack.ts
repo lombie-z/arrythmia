@@ -137,7 +137,15 @@ export function useScrollHijack() {
             clearInterval(momentumTimer.current);
             momentumTimer.current = null;
           }
+          // Hold 1800ms + CRT off 400ms + dark 1600ms = 3800ms
+          // CRT-on is a visual overlay that doesn't block scroll
           setTimeout(() => {
+            // Flush any accumulated momentum so stale scroll doesn't fire
+            momentumRef.current = 0;
+            if (momentumTimer.current) {
+              clearInterval(momentumTimer.current);
+              momentumTimer.current = null;
+            }
             setState({
               phase: curSel >= totalSelections ? "complete" : "idle",
               selectionIndex: curSel,
@@ -147,7 +155,7 @@ export function useScrollHijack() {
               bsodProgress: 0,
             });
             animatingRef.current = false;
-          }, 5500);
+          }, 3800);
         } else {
           setState((s) => ({ ...s, bsodProgress: next }));
         }
@@ -291,6 +299,19 @@ export function useScrollHijack() {
               dragProgress: 0,
             }));
             animatingRef.current = false;
+          } else if (selectionIndex === totalSelections - 1) {
+            // Last section — skip dissolve, go straight to complete
+            setTimeout(() => {
+              setState({
+                phase: "complete",
+                selectionIndex: selectionIndex + 1,
+                drawnSegments: 0,
+                dragProgress: 0,
+                dragInProgress: 0,
+                bsodProgress: 0,
+              });
+              animatingRef.current = false;
+            }, 100);
           } else {
             setState((s) => ({ ...s, phase: "masking" }));
             setTimeout(() => {
@@ -552,10 +573,17 @@ export function useScrollHijack() {
         momentumTimer.current = null;
       }
       momentumRef.current = 0;
+      let segments = 0;
+      if (index < totalSelections) {
+        const layer = ALBUM_DATA.layers[index];
+        if (layer.collageItems && bsodSeenRef.current) {
+          segments = layer.collageItems.filter((item) => !item.trail).length;
+        }
+      }
       setState({
         phase: index >= totalSelections ? "complete" : "idle",
         selectionIndex: index,
-        drawnSegments: 0,
+        drawnSegments: segments,
         dragProgress: 0,
         dragInProgress: 0,
         bsodProgress: 0,

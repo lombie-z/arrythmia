@@ -279,6 +279,37 @@ body {
   100% { background: rgba(255, 255, 255, 0.9); }
 }
 
+/* Links page — final background fades in/out behind the persistent selection */
+.complete-bg-fadein {
+  animation: complete-bg-in 2s ease-in forwards;
+}
+.complete-bg-fadeout {
+  animation: complete-bg-out 1.5s ease-out forwards;
+}
+
+@keyframes complete-bg-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes complete-bg-out {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Player glitch entrance */
+.player-glitch-in {
+  animation: player-glitch-enter 0.5s steps(5) forwards;
+}
+
+@keyframes player-glitch-enter {
+  0% { opacity: 0; transform: translateX(12px); }
+  20% { opacity: 0.6; transform: translateX(-6px); filter: hue-rotate(90deg); }
+  40% { opacity: 0.2; transform: translateX(4px); }
+  60% { opacity: 0.8; transform: translateX(-3px) skewX(2deg); filter: hue-rotate(-40deg); }
+  80% { opacity: 0.5; transform: translateX(2px); }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+
 @keyframes bsod-burst-anim {
   0%, 100% { transform: none; filter: none; }
   14% { transform: translate(-5px, 2px) scaleY(1.04); filter: hue-rotate(90deg); }

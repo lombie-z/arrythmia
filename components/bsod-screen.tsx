@@ -211,18 +211,13 @@ export function BsodScreen({ progress }: { progress: number }) {
     ? ((Math.floor(Date.now() / 50) * 13337) % 100 - 50) / 50 * scrollEffort * 5
     : 0;
 
-  const rootOpacity =
-    isShutdown && shutdownMs > 4200
-      ? Math.max(0, 1 - (shutdownMs - 4200) / 800)
-      : 1;
-
   const fringeStyle = {
     textShadow:
       "1.5px 0 0 rgba(255,0,0,0.35), -1.5px 0 0 rgba(0,255,255,0.35)",
   };
 
   return (
-    <div className="absolute inset-0 overflow-hidden" style={{ zIndex: 100, opacity: rootOpacity }}>
+    <div className="absolute inset-0 overflow-hidden" style={{ zIndex: 100 }}>
       <div
         className="absolute inset-0 flex flex-col justify-center px-[10%]"
         style={{
@@ -358,22 +353,18 @@ export function BsodScreen({ progress }: { progress: number }) {
 
       {isShutdown && shutdownMs > 0 && (() => {
         /*
-         *    0-1800ms   Hold at 100% — let the user feel it
-         * 1800-2000ms   CRT off: squeeze to horizontal line
-         * 2000-2200ms   Line shrinks to dot
-         * 2200-3800ms   Off — dark with gray static (1600ms)
-         * 3800-4000ms   CRT on: dot → line
-         * 4000-4200ms   Line expands to full, flash
-         * 4200-5000ms   Root opacity fades → section 8
+         *    0-1800ms   Hold at 100%
+         * 1800-2000ms   CRT off: squeeze to line
+         * 2000-2200ms   Line to dot
+         * 2200-3800ms   Dark with static (1600ms)
+         * 3800ms        BSOD unmounts → CRT on handled by ShutdownTransition
          */
 
-        const ms = shutdownMs - 1800; // offset by hold time
-        if (ms < 0) return null; // still in hold phase
+        const ms = shutdownMs - 1800;
+        if (ms < 0) return null;
 
         const offCollapse = ms < 200 ? ms / 200 : -1;
         const offDot = ms >= 200 && ms < 400 ? (ms - 200) / 200 : -1;
-        const onDot = ms >= 2000 && ms < 2200 ? (ms - 2000) / 200 : -1;
-        const onExpand = ms >= 2200 && ms < 2400 ? (ms - 2200) / 200 : -1;
 
         let scaleX = 1;
         let scaleY = 1;
@@ -386,18 +377,10 @@ export function BsodScreen({ progress }: { progress: number }) {
           scaleY = 0.005;
           scaleX = 1 - offDot * 0.99;
           brightness = 0.8 + offDot * 0.2;
-        } else if (onDot >= 0) {
-          scaleY = 0.005;
-          scaleX = 0.01 + onDot * 0.99;
-          brightness = 1 - onDot * 0.2;
-        } else if (onExpand >= 0) {
-          scaleY = 0.005 + onExpand * 0.995;
-          scaleX = 1;
-          brightness = Math.max(0, 0.8 - onExpand * 0.8);
         }
 
-        const showLine = offCollapse >= 0 || offDot >= 0 || onDot >= 0 || onExpand >= 0;
-        const isDark = ms >= 400 && ms < 2000;
+        const showLine = offCollapse >= 0 || offDot >= 0;
+        const isDark = ms >= 400;
 
         return (
           <div
