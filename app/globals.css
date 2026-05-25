@@ -226,6 +226,59 @@ body {
   animation: bsod-burst-anim 0.25s linear;
 }
 
+/* Pre-BSOD crash glitch */
+.bsod-preglitch {
+  animation: bsod-preglitch-escalate 0.8s ease-in forwards;
+}
+
+.bsod-preglitch-flash {
+  animation: bsod-preglitch-color 0.06s steps(4) infinite;
+}
+
+.bsod-preglitch-bars {
+  animation: bsod-preglitch-scan 0.08s steps(3) infinite;
+}
+
+.bsod-preglitch-white {
+  animation: bsod-preglitch-whiteout 0.8s ease-in forwards;
+}
+
+@keyframes bsod-preglitch-escalate {
+  0% { opacity: 0.1; }
+  40% { opacity: 0.35; }
+  70% { opacity: 0.65; }
+  90% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+@keyframes bsod-preglitch-color {
+  0% { background: rgba(255, 0, 0, 0.1); }
+  25% { background: rgba(0, 255, 0, 0.12); }
+  50% { background: transparent; }
+  75% { background: rgba(0, 100, 255, 0.15); }
+}
+
+@keyframes bsod-preglitch-scan {
+  0% {
+    background: repeating-linear-gradient(0deg, transparent 0, transparent 30px, rgba(255,255,255,0.08) 30px, rgba(255,255,255,0.08) 33px);
+    transform: translateX(0);
+  }
+  33% {
+    background: repeating-linear-gradient(0deg, transparent 0, transparent 20px, rgba(255,255,255,0.12) 20px, rgba(255,255,255,0.12) 23px);
+    transform: translateX(8px);
+  }
+  66% {
+    background: repeating-linear-gradient(0deg, transparent 0, transparent 25px, rgba(255,255,255,0.06) 25px, rgba(255,255,255,0.06) 27px);
+    transform: translateX(-5px);
+  }
+}
+
+@keyframes bsod-preglitch-whiteout {
+  0%, 85% { background: transparent; }
+  95% { background: rgba(255, 255, 255, 0.4); }
+  100% { background: rgba(255, 255, 255, 0.9); }
+}
+
 @keyframes bsod-burst-anim {
   0%, 100% { transform: none; filter: none; }
   14% { transform: translate(-5px, 2px) scaleY(1.04); filter: hue-rotate(90deg); }

@@ -15,6 +15,7 @@ import { SocialLinks } from "./social-links";
 import { DragCursor } from "./drag-cursor";
 import { BsodScreen } from "./bsod-screen";
 import { VhsOverlay } from "./vhs-overlay";
+import { StaticNoise } from "./static-noise";
 
 
 const EDGE_SNAP = 1;
@@ -30,6 +31,8 @@ function snapEdge(v: number): number {
 function toClipPath(points: AnchorPoint[]): string {
   return `polygon(${points.map((p) => `${snapEdge(p.x)}% ${snapEdge(p.y)}%`).join(", ")})`;
 }
+
+const GRADIENT_LAYERS = new Set([1]);
 
 function buildNestedLayers(
   completed: Layer[],
@@ -54,13 +57,20 @@ function buildNestedLayers(
             : undefined,
         }}
       >
-        <img
-          src={layer.imageUrl}
-          alt=""
-          draggable={false}
-          className="absolute inset-0 w-full h-full select-none"
-          style={{ objectFit: "fill", pointerEvents: "none" }}
-        />
+        {GRADIENT_LAYERS.has(i) ? (
+          <div className="absolute inset-0">
+            <div className="absolute inset-0" style={{ background: "linear-gradient(to left, #16222A, #3A6073)", backgroundImage: "url(/images/static.gif)", backgroundSize: "cover" }} />
+            <div className="absolute inset-0" style={{ opacity: 0.3 }}><StaticNoise /></div>
+          </div>
+        ) : (
+          <img
+            src={layer.imageUrl}
+            alt=""
+            draggable={false}
+            className="absolute inset-0 w-full h-full select-none"
+            style={{ objectFit: "fill", pointerEvents: "none" }}
+          />
+        )}
         {nested}
       </div>
     );
@@ -70,7 +80,7 @@ function buildNestedLayers(
 }
 
 export function AlbumViewport() {
-  const { phase, selectionIndex, drawnSegments, dragProgress, bsodProgress, goToSection } = useScrollHijack();
+  const { phase, selectionIndex, drawnSegments, dragProgress, bsodProgress, goToSection, bsodSeen } = useScrollHijack();
   const [isPlaying, setIsPlaying] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const onPlayingChange = useCallback((playing: boolean) => setIsPlaying(playing), []);
@@ -119,7 +129,11 @@ export function AlbumViewport() {
           aspectRatio: `${ASPECT_RATIO}`,
         }}
       >
-        {maskApplied && <ImageLayer imageUrl={nextImage} zIndex={1} visible />}
+        {maskApplied && (
+          GRADIENT_LAYERS.has(selectionIndex + 1)
+            ? <div className="absolute inset-0" style={{ zIndex: 1, background: "linear-gradient(to left, #16222A, #3A6073)", backgroundImage: "url(/images/static.gif)", backgroundSize: "cover" }} />
+            : <ImageLayer imageUrl={nextImage} zIndex={1} visible />
+        )}
 
         {maskApplied && activeLayer ? (
           <div
@@ -129,18 +143,28 @@ export function AlbumViewport() {
               zIndex: 2,
             }}
           >
-            <img
-              src={currentImage}
-              alt=""
-              draggable={false}
-              className="absolute inset-0 w-full h-full select-none"
-              style={{ objectFit: "fill", pointerEvents: "none" }}
-            />
+            {GRADIENT_LAYERS.has(selectionIndex) ? (
+              <div className="absolute inset-0">
+            <div className="absolute inset-0" style={{ background: "linear-gradient(to left, #16222A, #3A6073)", backgroundImage: "url(/images/static.gif)", backgroundSize: "cover" }} />
+            <div className="absolute inset-0" style={{ opacity: 0.3 }}><StaticNoise /></div>
+          </div>
+            ) : (
+              <img
+                src={currentImage}
+                alt=""
+                draggable={false}
+                className="absolute inset-0 w-full h-full select-none"
+                style={{ objectFit: "fill", pointerEvents: "none" }}
+              />
+            )}
             {nestedLayers}
           </div>
         ) : (
           <>
-            <ImageLayer imageUrl={currentImage} zIndex={2} visible />
+            {GRADIENT_LAYERS.has(selectionIndex)
+              ? <div className="absolute inset-0" style={{ zIndex: 2, background: "linear-gradient(to left, #16222A, #3A6073)", backgroundImage: "url(/images/static.gif)", backgroundSize: "cover" }} />
+              : <ImageLayer imageUrl={currentImage} zIndex={2} visible />
+            }
             {isComplete ? (() => {
               const lastReal = [...completedLayers].reverse().find((l) => !l.collageItems);
               if (!lastReal) return null;
@@ -164,7 +188,8 @@ export function AlbumViewport() {
 
         {/* Collage layer: pieces appear one at a time */}
         {activeLayer?.collageItems && !isDragging && drawnSegments > 0 && (() => {
-          const items = activeLayer.collageItems!;
+          const allItems = activeLayer.collageItems!;
+          const items = bsodSeen ? allItems.filter((item) => !item.trail) : allItems;
 
           // Map drawnSegments to per-item visibility.
           // Normal items cost 1 tick. Consecutive trail items are interleaved.
@@ -434,6 +459,15 @@ export function AlbumViewport() {
             </>
           );
         })()}
+
+        {/* Pre-BSOD glitch storm */}
+        {phase === "dissolving" && selectionIndex === 6 && !bsodSeen && (
+          <div className="absolute inset-0 bsod-preglitch" style={{ zIndex: 55, pointerEvents: "none" }}>
+            <div className="absolute inset-0 bsod-preglitch-flash" />
+            <div className="absolute inset-0 bsod-preglitch-bars" />
+            <div className="absolute inset-0 bsod-preglitch-white" />
+          </div>
+        )}
 
         {/* BSOD transition between sections 7 and 8 */}
         {phase === "bsod" && <BsodScreen progress={bsodProgress} />}

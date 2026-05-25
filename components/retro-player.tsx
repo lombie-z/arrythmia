@@ -24,6 +24,7 @@ export function RetroPlayer({
   const [duration, setDuration] = useState(0);
   const [isHD, setIsHD] = useState(false);
   const rafRef = useRef<number>(0);
+  const wasPlayingRef = useRef(false);
 
   const trackIndex = Math.min(selectionIndex, ALBUM_DATA.tracks.length - 1);
   const track = ALBUM_DATA.tracks[trackIndex];
@@ -37,12 +38,13 @@ export function RetroPlayer({
 
   useEffect(() => {
     const prev = audioRef.current;
-    const prevTime = prev?.currentTime ?? 0;
-    const wasPlaying = prev ? !prev.paused : false;
+    const shouldContinue = wasPlayingRef.current;
 
     if (prev) {
+      wasPlayingRef.current = !prev.paused;
       prev.pause();
-      prev.src = "";
+      prev.removeAttribute("src");
+      prev.load();
       audioRef.current = null;
     }
 
@@ -50,20 +52,28 @@ export function RetroPlayer({
     setDuration(0);
     setIsPlaying(false);
 
-    if (isLastSection || !audioSrc) return;
+    if (!audioSrc) return;
 
     const audio = new Audio(audioSrc);
     audio.volume = 0.5;
     audioRef.current = audio;
 
     const onMeta = () => setDuration(audio.duration);
-    const onEnd = () => setIsPlaying(false);
+    const onEnd = () => {
+      setIsPlaying(false);
+      wasPlayingRef.current = false;
+    };
     audio.addEventListener("loadedmetadata", onMeta);
     audio.addEventListener("ended", onEnd);
+
+    if (shouldContinue) {
+      audio.play().then(() => setIsPlaying(true)).catch(() => {});
+    }
 
     return () => {
       audio.removeEventListener("loadedmetadata", onMeta);
       audio.removeEventListener("ended", onEnd);
+      wasPlayingRef.current = !audio.paused;
       audio.pause();
     };
   }, [selectionIndex, isLastSection, audioSrc]);
@@ -115,7 +125,7 @@ export function RetroPlayer({
       >
         <div className="flex items-center justify-between gap-3">
           <div className="truncate tracking-wider uppercase" style={{ color: "#88aaff", fontSize: 10 }}>
-            {isLastSection ? "—" : track?.title ?? "—"}
+            {track?.title ?? "—"}
           </div>
           <button
             onClick={() => setIsHD((v) => !v)}
@@ -134,7 +144,7 @@ export function RetroPlayer({
         </div>
 
         <div style={{ color: "#556688", fontSize: 9, textAlign: "right" }}>
-          {isLastSection ? "—:——" : `${formatTime(progress)} / ${formatTime(duration)}`}
+          {`${formatTime(progress)} / ${formatTime(duration)}`}
         </div>
 
         <div

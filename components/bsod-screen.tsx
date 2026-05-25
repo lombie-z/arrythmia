@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { SmokeOverlay } from "./smoke-overlay";
+import { StaticNoise } from "./static-noise";
 
 function mulberry32(seed: number) {
   return () => {
@@ -157,8 +158,63 @@ export function BsodScreen({ progress }: { progress: number }) {
     };
   }, []);
 
-  const isGlitching = showBurst || randomGlitch;
+  // Shutdown sequence at 100%
+  const isShutdown = pct >= 100;
+  const shutdownStart = useRef(0);
+  const [shutdownMs, setShutdownMs] = useState(0);
+
+  useEffect(() => {
+    if (!isShutdown) {
+      shutdownStart.current = 0;
+      setShutdownMs(0);
+      return;
+    }
+    if (!shutdownStart.current) shutdownStart.current = performance.now();
+    let raf: number;
+    const tick = () => {
+      setShutdownMs(performance.now() - shutdownStart.current);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [isShutdown]);
+
+  // Scroll resistance glitch — effort derived from progress change rate
+  const prevProg = useRef(progress);
+  const effortRef = useRef(0);
+  const [scrollEffort, setScrollEffort] = useState(0);
+
+  const delta = Math.abs(progress - prevProg.current);
+  prevProg.current = progress;
+  const zone = progress > 0.95 ? 800 : progress > 0.85 ? 150 : progress > 0.7 ? 30 : progress > 0.5 ? 8 : 1;
+  effortRef.current = Math.max(effortRef.current * 0.92, Math.min(1, delta * zone));
+
+  useEffect(() => {
+    let raf: number;
+    const tick = () => {
+      setScrollEffort((prev) => {
+        const target = effortRef.current;
+        effortRef.current *= 0.95;
+        const next = target > prev ? target : prev * 0.88;
+        return next < 0.01 ? 0 : next;
+      });
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  const isGlitching = !isShutdown && (showBurst || randomGlitch || scrollEffort > 0.05);
   const smokeIntensity = pct >= 80 ? (pct - 80) / 20 : 0;
+
+  const effortJitterX = scrollEffort > 0.08
+    ? ((Math.floor(Date.now() / 50) * 13337) % 100 - 50) / 50 * scrollEffort * 5
+    : 0;
+
+  const rootOpacity =
+    isShutdown && shutdownMs > 4200
+      ? Math.max(0, 1 - (shutdownMs - 4200) / 800)
+      : 1;
 
   const fringeStyle = {
     textShadow:
@@ -166,7 +222,7 @@ export function BsodScreen({ progress }: { progress: number }) {
   };
 
   return (
-    <div className="absolute inset-0 overflow-hidden" style={{ zIndex: 100 }}>
+    <div className="absolute inset-0 overflow-hidden" style={{ zIndex: 100, opacity: rootOpacity }}>
       <div
         className="absolute inset-0 flex flex-col justify-center px-[10%]"
         style={{
@@ -185,6 +241,7 @@ export function BsodScreen({ progress }: { progress: number }) {
           <div
             key={burstKey}
             className={showBurst ? "bsod-burst" : undefined}
+            style={effortJitterX ? { transform: `translateX(${effortJitterX}px)` } : undefined}
           >
             <div
               className="relative text-white"
@@ -298,6 +355,79 @@ export function BsodScreen({ progress }: { progress: number }) {
       />
 
       {smokeIntensity > 0 && <SmokeOverlay intensity={smokeIntensity} />}
+
+      {isShutdown && shutdownMs > 0 && (() => {
+        /*
+         *    0-1800ms   Hold at 100% — let the user feel it
+         * 1800-2000ms   CRT off: squeeze to horizontal line
+         * 2000-2200ms   Line shrinks to dot
+         * 2200-3800ms   Off — dark with gray static (1600ms)
+         * 3800-4000ms   CRT on: dot → line
+         * 4000-4200ms   Line expands to full, flash
+         * 4200-5000ms   Root opacity fades → section 8
+         */
+
+        const ms = shutdownMs - 1800; // offset by hold time
+        if (ms < 0) return null; // still in hold phase
+
+        const offCollapse = ms < 200 ? ms / 200 : -1;
+        const offDot = ms >= 200 && ms < 400 ? (ms - 200) / 200 : -1;
+        const onDot = ms >= 2000 && ms < 2200 ? (ms - 2000) / 200 : -1;
+        const onExpand = ms >= 2200 && ms < 2400 ? (ms - 2200) / 200 : -1;
+
+        let scaleX = 1;
+        let scaleY = 1;
+        let brightness = 0;
+
+        if (offCollapse >= 0) {
+          scaleY = 1 - offCollapse * 0.995;
+          brightness = offCollapse * 0.8;
+        } else if (offDot >= 0) {
+          scaleY = 0.005;
+          scaleX = 1 - offDot * 0.99;
+          brightness = 0.8 + offDot * 0.2;
+        } else if (onDot >= 0) {
+          scaleY = 0.005;
+          scaleX = 0.01 + onDot * 0.99;
+          brightness = 1 - onDot * 0.2;
+        } else if (onExpand >= 0) {
+          scaleY = 0.005 + onExpand * 0.995;
+          scaleX = 1;
+          brightness = Math.max(0, 0.8 - onExpand * 0.8);
+        }
+
+        const showLine = offCollapse >= 0 || offDot >= 0 || onDot >= 0 || onExpand >= 0;
+        const isDark = ms >= 400 && ms < 2000;
+
+        return (
+          <div
+            className="absolute inset-0"
+            style={{ zIndex: 10, background: "rgb(2, 8, 4)" }}
+          >
+            {isDark && (
+              <div className="absolute inset-0" style={{ opacity: 0.25 }}>
+                <StaticNoise />
+              </div>
+            )}
+            {showLine && (
+              <div
+                className="absolute"
+                style={{
+                  left: "50%",
+                  top: "50%",
+                  width: `${scaleX * 100}%`,
+                  height: `${Math.max(2, scaleY * 100)}%`,
+                  transform: "translate(-50%, -50%)",
+                  background: `rgb(${Math.round(200 + brightness * 55)}, ${Math.round(200 + brightness * 55)}, ${Math.round(210 + brightness * 45)})`,
+                  boxShadow: brightness > 0.3
+                    ? `0 0 ${brightness * 40}px ${brightness * 15}px rgba(255,255,255,${brightness * 0.4})`
+                    : "none",
+                }}
+              />
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

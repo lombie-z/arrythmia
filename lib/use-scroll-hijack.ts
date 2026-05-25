@@ -15,6 +15,7 @@ const DRAG_STEPS = 60;
 const DRAG_IN_STEPS = 50;
 const BSOD_AFTER_SELECTION = 6;
 const BSOD_STEPS = 40;
+const PRE_BSOD_GLITCH = 800;
 
 interface ScrollState {
   phase: ScrollPhase;
@@ -51,6 +52,9 @@ export function useScrollHijack() {
       if (idx >= totalSelections) return 0;
       const layer = ALBUM_DATA.layers[idx];
       if (layer.collageItems) {
+        if (bsodSeenRef.current) {
+          return layer.collageItems.filter((item) => !item.trail).length;
+        }
         return layer.collageItems.reduce(
           (sum, item) => sum + (item.trail ? item.trail.count : 1),
           0,
@@ -143,7 +147,7 @@ export function useScrollHijack() {
               bsodProgress: 0,
             });
             animatingRef.current = false;
-          }, 2800);
+          }, 5500);
         } else {
           setState((s) => ({ ...s, bsodProgress: next }));
         }
@@ -175,8 +179,8 @@ export function useScrollHijack() {
           momentumTimer.current = null;
         }
 
-        if (isTrailTick) {
-          // Auto-advance all trail ticks
+        if (isTrailTick && !bsodSeenRef.current) {
+          // Auto-advance all trail ticks (first visit only)
           animatingRef.current = true;
           const autoAdvance = setInterval(() => {
             const { drawnSegments: cur } = stateRef.current;
@@ -209,7 +213,7 @@ export function useScrollHijack() {
                       });
                     }
                     animatingRef.current = false;
-                  }, DISSOLVE_DURATION);
+                  }, selectionIndex === BSOD_AFTER_SELECTION && !bsodSeenRef.current ? PRE_BSOD_GLITCH : DISSOLVE_DURATION);
                 }, MASK_DURATION);
               }, 50);
               return;
@@ -224,7 +228,8 @@ export function useScrollHijack() {
         setTimeout(() => { animatingRef.current = false; }, 400);
       } else {
         const TARGET_POINTS = 50;
-        const weight = Math.max(0.2, pointCount / TARGET_POINTS);
+        const layerSlowdown = selectionIndex === 7 ? 0.35 : 1;
+        const weight = Math.max(0.2, pointCount / TARGET_POINTS) * layerSlowdown;
         const normalizedSteps = Math.max(1, Math.round(steps * weight));
         const progress = drawnSegments / pointCount;
         const remaining = 1 - (drawnSegments + normalizedSteps) / pointCount;
@@ -267,7 +272,7 @@ export function useScrollHijack() {
                   });
                   animatingRef.current = false;
                 }
-              }, DISSOLVE_DURATION);
+              }, selectionIndex === BSOD_AFTER_SELECTION && !bsodSeenRef.current ? PRE_BSOD_GLITCH : DISSOLVE_DURATION);
             }, MASK_DURATION);
           }, 50);
         }
@@ -465,17 +470,21 @@ export function useScrollHijack() {
   const advance = useCallback(
     (steps: number) => {
       advanceRaw(steps);
-      startMomentum(steps * 0.6);
+      const { selectionIndex: idx } = stateRef.current;
+      const noMomentum = idx === 7 || isCollageLayer(idx);
+      if (!noMomentum) startMomentum(steps * 0.6);
     },
-    [advanceRaw, startMomentum],
+    [advanceRaw, startMomentum, isCollageLayer],
   );
 
   const retreat = useCallback(
     (steps: number) => {
       retreatRaw(steps);
-      startMomentum(-steps * 0.6);
+      const { selectionIndex: idx } = stateRef.current;
+      const noMomentum = idx === 7 || isCollageLayer(idx);
+      if (!noMomentum) startMomentum(-steps * 0.6);
     },
-    [retreatRaw, startMomentum],
+    [retreatRaw, startMomentum, isCollageLayer],
   );
 
   useEffect(() => {
@@ -555,5 +564,5 @@ export function useScrollHijack() {
     [totalSelections],
   );
 
-  return { ...state, goToSection };
+  return { ...state, goToSection, bsodSeen: bsodSeenRef.current };
 }
