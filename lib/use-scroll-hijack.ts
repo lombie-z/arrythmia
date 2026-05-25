@@ -39,6 +39,7 @@ export function useScrollHijack() {
   const animatingRef = useRef(false);
   const bsodSeenRef = useRef(false);
   const bsodShutdownRef = useRef(false);
+  const bsodShutdownStartRef = useRef(0);
   const touchStartRef = useRef(0);
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -76,7 +77,16 @@ export function useScrollHijack() {
 
   const advanceRaw = useCallback(
     (steps: number) => {
-      if (animatingRef.current) return;
+      if (animatingRef.current) {
+        if (bsodShutdownRef.current && performance.now() - bsodShutdownStartRef.current >= 4000) {
+          animatingRef.current = false;
+          momentumRef.current = 0;
+          if (momentumTimer.current) { clearInterval(momentumTimer.current); momentumTimer.current = null; }
+          const sel = stateRef.current.selectionIndex;
+          setState({ phase: sel >= totalSelections ? "complete" : "idle", selectionIndex: sel, drawnSegments: 0, dragProgress: 0, dragInProgress: 0, bsodProgress: 0 });
+        }
+        return;
+      }
       const { selectionIndex, drawnSegments, phase: curPhase } = stateRef.current;
 
       if (curPhase === "dragging") {
@@ -134,6 +144,7 @@ export function useScrollHijack() {
 
         if (next >= 1 && !bsodShutdownRef.current) {
           bsodShutdownRef.current = true;
+          bsodShutdownStartRef.current = performance.now();
           setState((s) => ({ ...s, bsodProgress: 1 }));
           animatingRef.current = true;
           momentumRef.current = 0;
@@ -164,7 +175,6 @@ export function useScrollHijack() {
               dragInProgress: 0,
               bsodProgress: 0,
             });
-            bsodShutdownRef.current = false;
             animatingRef.current = false;
           };
           setTimeout(unlockScroll, 3800);
@@ -187,7 +197,9 @@ export function useScrollHijack() {
 
       if (isCollageLayer(selectionIndex)) {
         const layer = ALBUM_DATA.layers[selectionIndex];
-        const items = layer.collageItems!;
+        const items = bsodSeenRef.current
+          ? layer.collageItems!.filter((item) => !item.trail)
+          : layer.collageItems!;
         let tickAcc = 0;
         let isTrailTick = false;
         for (const item of items) {
@@ -356,7 +368,16 @@ export function useScrollHijack() {
 
   const retreatRaw = useCallback(
     (steps: number) => {
-      if (animatingRef.current) return;
+      if (animatingRef.current) {
+        if (bsodShutdownRef.current && performance.now() - bsodShutdownStartRef.current >= 4000) {
+          animatingRef.current = false;
+          momentumRef.current = 0;
+          if (momentumTimer.current) { clearInterval(momentumTimer.current); momentumTimer.current = null; }
+          const sel = stateRef.current.selectionIndex;
+          setState({ phase: sel >= totalSelections ? "complete" : "idle", selectionIndex: sel, drawnSegments: 0, dragProgress: 0, dragInProgress: 0, bsodProgress: 0 });
+        }
+        return;
+      }
       const { selectionIndex, drawnSegments, phase: curPhase } = stateRef.current;
 
       if (curPhase === "dragging") {
@@ -406,7 +427,9 @@ export function useScrollHijack() {
           }
 
           const layer = ALBUM_DATA.layers[selectionIndex];
-          const items = layer.collageItems!;
+          const items = bsodSeenRef.current
+            ? layer.collageItems!.filter((item) => !item.trail)
+            : layer.collageItems!;
           // Find where we are and if it's a trail
           let tickAcc = 0;
           let isTrailTick = false;

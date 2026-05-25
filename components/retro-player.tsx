@@ -9,6 +9,7 @@ interface RetroPlayerProps {
   onSkipForward: () => void;
   onSkipBack: () => void;
   onPlayingChange?: (playing: boolean) => void;
+  autoplay?: boolean;
 }
 
 export function RetroPlayer({
@@ -17,6 +18,7 @@ export function RetroPlayer({
   onSkipForward,
   onSkipBack,
   onPlayingChange,
+  autoplay,
 }: RetroPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -71,7 +73,7 @@ export function RetroPlayer({
     audio.addEventListener("loadedmetadata", onMeta);
     audio.addEventListener("ended", onEnd);
 
-    if (shouldContinue) {
+    if (shouldContinue || autoplay) {
       audio.play().then(() => setIsPlaying(true)).catch(() => {});
     }
 
@@ -80,6 +82,9 @@ export function RetroPlayer({
       audio.removeEventListener("ended", onEnd);
       wasPlayingRef.current = !audio.paused;
       audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+      audioRef.current = null;
     };
   }, [selectionIndex, isLastSection, audioSrc]);
 

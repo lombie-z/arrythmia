@@ -120,6 +120,72 @@ function GlitchText({
   );
 }
 
+let sharedAudioCtx: AudioContext | null = null;
+let audioUnlocked = false;
+function getAudioCtx(): AudioContext {
+  if (!sharedAudioCtx) sharedAudioCtx = new AudioContext();
+  return sharedAudioCtx;
+}
+if (typeof window !== "undefined") {
+  const unlock = () => {
+    if (audioUnlocked) return;
+    audioUnlocked = true;
+    getAudioCtx().resume();
+    window.removeEventListener("pointerdown", unlock);
+    window.removeEventListener("keydown", unlock);
+    window.removeEventListener("wheel", unlock);
+    window.removeEventListener("touchstart", unlock);
+  };
+  window.addEventListener("pointerdown", unlock);
+  window.addEventListener("keydown", unlock);
+  window.addEventListener("wheel", unlock);
+  window.addEventListener("touchstart", unlock);
+}
+
+function useStaticNoise(active: boolean, volume: number) {
+  const srcRef = useRef<AudioBufferSourceNode | null>(null);
+  const gainRef = useRef<GainNode | null>(null);
+  const volRef = useRef(volume);
+  volRef.current = volume;
+
+  useEffect(() => {
+    if (!active || !audioUnlocked) return;
+    const ctx = getAudioCtx();
+
+    const bufSize = ctx.sampleRate * 2;
+    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.setTargetAtTime(volRef.current, ctx.currentTime, 0.5);
+    gainRef.current = gain;
+    srcRef.current = src;
+    src.connect(gain).connect(ctx.destination);
+    src.start();
+
+    return () => {
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+      src.stop();
+      src.disconnect();
+      gain.disconnect();
+      srcRef.current = null;
+      gainRef.current = null;
+    };
+  }, [active]);
+
+  useEffect(() => {
+    if (gainRef.current && active) {
+      const ctx = getAudioCtx();
+      gainRef.current.gain.setTargetAtTime(volume, ctx.currentTime, 0.1);
+    }
+  }, [volume, active]);
+}
+
 export function BsodScreen({ progress }: { progress: number }) {
   const eased = Math.pow(progress, 3.5);
   const pct = Math.min(100, Math.round(eased * 102));
@@ -162,6 +228,21 @@ export function BsodScreen({ progress }: { progress: number }) {
   const isShutdown = pct >= 100;
   const shutdownStart = useRef(0);
   const [shutdownMs, setShutdownMs] = useState(0);
+
+  // White noise audio — whisper at start, crescendo toward 100%, intensifies during CRT off
+  const noiseActive = !isShutdown || shutdownMs < 2200;
+  let noiseVol: number;
+  if (isShutdown) {
+    if (shutdownMs > 1800) {
+      const t = Math.min(1, (shutdownMs - 1800) / 400);
+      noiseVol = 0.06 + t * 0.05;
+    } else {
+      noiseVol = 0.06;
+    }
+  } else {
+    noiseVol = 0.003 + Math.pow(progress, 3) * 0.057;
+  }
+  useStaticNoise(noiseActive, noiseVol);
 
   useEffect(() => {
     if (!isShutdown) {

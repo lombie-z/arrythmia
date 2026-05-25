@@ -637,6 +637,7 @@ export function AlbumViewport() {
           onSkipForward={skipForward}
           onSkipBack={skipBack}
           onPlayingChange={onPlayingChange}
+          autoplay={selectionIndex === layers.length - 1 && showCrtOn}
         />}
       </div>
 
