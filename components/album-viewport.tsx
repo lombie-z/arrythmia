@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useScrollHijack } from "@/lib/use-scroll-hijack";
 import { ALBUM_DATA } from "@/lib/album-data";
 import { ASPECT_RATIO } from "@/lib/constants";
@@ -14,6 +14,7 @@ import { LoadingScreen } from "./loading-screen";
 import { SocialLinks } from "./social-links";
 import { DragCursor } from "./drag-cursor";
 import { BsodScreen } from "./bsod-screen";
+import { VhsOverlay } from "./vhs-overlay";
 
 
 const EDGE_SNAP = 1;
@@ -70,6 +71,9 @@ function buildNestedLayers(
 
 export function AlbumViewport() {
   const { phase, selectionIndex, drawnSegments, dragProgress, bsodProgress, goToSection } = useScrollHijack();
+  const [isPlaying, setIsPlaying] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const onPlayingChange = useCallback((playing: boolean) => setIsPlaying(playing), []);
   const { layers, finalImage } = ALBUM_DATA;
 
   const completedLayers = layers.slice(0, selectionIndex);
@@ -105,6 +109,7 @@ export function AlbumViewport() {
   return (
     <div className="fixed inset-0 w-screen h-screen overflow-hidden bsod-bars flex items-center justify-center">
       <div
+        ref={containerRef}
         className="relative crt-bulge"
         style={{
           width: "100%",
@@ -471,12 +476,15 @@ export function AlbumViewport() {
         {/* Loading screen inside the content area */}
         {!loaded && <LoadingScreen onDone={onLoadDone} />}
 
+        <VhsOverlay active={isPlaying && phase !== "bsod"} containerRef={containerRef} />
+
         {/* Retro player — hidden during BSOD */}
         {phase !== "bsod" && <RetroPlayer
           selectionIndex={selectionIndex}
           totalSections={layers.length}
           onSkipForward={skipForward}
           onSkipBack={skipBack}
+          onPlayingChange={onPlayingChange}
         />}
       </div>
 

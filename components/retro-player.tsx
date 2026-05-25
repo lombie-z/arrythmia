@@ -8,6 +8,7 @@ interface RetroPlayerProps {
   totalSections: number;
   onSkipForward: () => void;
   onSkipBack: () => void;
+  onPlayingChange?: (playing: boolean) => void;
 }
 
 export function RetroPlayer({
@@ -15,6 +16,7 @@ export function RetroPlayer({
   totalSections,
   onSkipForward,
   onSkipBack,
+  onPlayingChange,
 }: RetroPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -87,6 +89,10 @@ export function RetroPlayer({
       setIsPlaying(false);
     }
   }, []);
+
+  useEffect(() => {
+    onPlayingChange?.(isPlaying);
+  }, [isPlaying, onPlayingChange]);
 
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
