@@ -133,12 +133,10 @@ if (typeof window !== "undefined") {
     getAudioCtx().resume();
     window.removeEventListener("pointerdown", unlock);
     window.removeEventListener("keydown", unlock);
-    window.removeEventListener("wheel", unlock);
     window.removeEventListener("touchstart", unlock);
   };
   window.addEventListener("pointerdown", unlock);
   window.addEventListener("keydown", unlock);
-  window.addEventListener("wheel", unlock);
   window.addEventListener("touchstart", unlock);
 }
 

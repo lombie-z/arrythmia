@@ -159,9 +159,11 @@ export function useScrollHijack() {
           // (mobile browsers throttle setTimeout in background/low-power)
           const shutdownStart = performance.now();
           let shutdownDone = false;
+          let failsafeInterval: ReturnType<typeof setInterval> | null = null;
           const unlockScroll = () => {
             if (shutdownDone) return;
             shutdownDone = true;
+            if (failsafeInterval) { clearInterval(failsafeInterval); failsafeInterval = null; }
             momentumRef.current = 0;
             if (momentumTimer.current) {
               clearInterval(momentumTimer.current);
@@ -184,6 +186,9 @@ export function useScrollHijack() {
             requestAnimationFrame(pollShutdown);
           };
           requestAnimationFrame(pollShutdown);
+          failsafeInterval = setInterval(() => {
+            if (performance.now() - shutdownStart >= 3800) unlockScroll();
+          }, 200);
         } else {
           setState((s) => ({ ...s, bsodProgress: next }));
         }
@@ -261,28 +266,12 @@ export function useScrollHijack() {
           return;
         }
 
-        animatingRef.current = true;
-        next = Math.min(drawnSegments + 1, pointCount);
-        setTimeout(() => { animatingRef.current = false; }, 400);
-      } else {
-        const TARGET_POINTS = 50;
-        const layerSlowdown = selectionIndex === 7 ? 0.35 : 1;
-        const weight = Math.max(0.2, pointCount / TARGET_POINTS) * layerSlowdown;
-        const normalizedSteps = Math.max(1, Math.round(steps * weight));
-        const progress = drawnSegments / pointCount;
-        const remaining = 1 - (drawnSegments + normalizedSteps) / pointCount;
-        const nearEdge = progress < 0.12 || remaining < 0.12;
-        const easedSteps = nearEdge ? Math.max(1, Math.ceil(normalizedSteps * 0.3)) : normalizedSteps;
-        next = Math.min(drawnSegments + easedSteps, pointCount);
-      }
-
-      if (isCollageLayer(selectionIndex)) {
-        if (drawnSegments < pointCount) {
-          setState((s) => ({ ...s, phase: "drawing", drawnSegments: next }));
-        } else {
-          // All pieces shown — next scroll triggers transition
+        if (drawnSegments >= pointCount) {
+          if (bsodSeenRef.current && curPhase === "idle") {
+            setState((s) => ({ ...s, phase: "drawing" }));
+            return;
+          }
           animatingRef.current = true;
-          momentumRef.current = 0;
           setState((s) => ({ ...s, phase: "closing", drawnSegments: pointCount }));
           setTimeout(() => {
             setState((s) => ({ ...s, phase: "masking" }));
@@ -297,7 +286,6 @@ export function useScrollHijack() {
                     drawnSegments: 0,
                     bsodProgress: 0,
                   }));
-                  animatingRef.current = false;
                 } else {
                   const nextSel = selectionIndex + 1;
                   setState({
@@ -308,13 +296,33 @@ export function useScrollHijack() {
                     dragInProgress: 0,
                     bsodProgress: 0,
                   });
-                  animatingRef.current = false;
                 }
+                requestAnimationFrame(() => { animatingRef.current = false; });
               }, selectionIndex === BSOD_AFTER_SELECTION && !bsodSeenRef.current ? PRE_BSOD_GLITCH : DISSOLVE_DURATION);
             }, MASK_DURATION);
           }, 50);
+          return;
         }
-      } else if (next < pointCount) {
+
+        if (!bsodSeenRef.current) {
+          animatingRef.current = true;
+          setTimeout(() => { animatingRef.current = false; }, 400);
+        }
+        setState((s) => ({ ...s, phase: "drawing", drawnSegments: drawnSegments + 1 }));
+        return;
+      }
+
+      const TARGET_POINTS = 50;
+      const layerSlowdown = selectionIndex === 7 ? 0.35 : 1;
+      const weight = Math.max(0.2, pointCount / TARGET_POINTS) * layerSlowdown;
+      const normalizedSteps = Math.max(1, Math.round(steps * weight));
+      const progress = drawnSegments / pointCount;
+      const remaining = 1 - (drawnSegments + normalizedSteps) / pointCount;
+      const nearEdge = progress < 0.12 || remaining < 0.12;
+      const easedSteps = nearEdge ? Math.max(1, Math.ceil(normalizedSteps * 0.3)) : normalizedSteps;
+      next = Math.min(drawnSegments + easedSteps, pointCount);
+
+      if (next < pointCount) {
         setState((s) => ({ ...s, phase: "drawing", drawnSegments: next }));
       } else {
         animatingRef.current = true;
@@ -465,9 +473,11 @@ export function useScrollHijack() {
             return;
           }
 
-          animatingRef.current = true;
+          if (!bsodSeenRef.current) {
+            animatingRef.current = true;
+            setTimeout(() => { animatingRef.current = false; }, 400);
+          }
           const next = Math.max(drawnSegments - 1, 0);
-          setTimeout(() => { animatingRef.current = false; }, 400);
           setState((s) => ({ ...s, phase: "drawing", drawnSegments: next }));
         } else {
           const next = Math.max(drawnSegments - steps, 0);

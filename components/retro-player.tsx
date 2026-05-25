@@ -73,7 +73,7 @@ export function RetroPlayer({
     audio.addEventListener("loadedmetadata", onMeta);
     audio.addEventListener("ended", onEnd);
 
-    if (shouldContinue || autoplay) {
+    if (shouldContinue) {
       audio.play().then(() => setIsPlaying(true)).catch(() => {});
     }
 
@@ -86,7 +86,13 @@ export function RetroPlayer({
       audio.load();
       audioRef.current = null;
     };
-  }, [selectionIndex, isLastSection, audioSrc]);
+  }, [audioSrc]);
+
+  useEffect(() => {
+    if (autoplay && audioRef.current && audioRef.current.paused) {
+      audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+    }
+  }, [autoplay]);
 
   useEffect(() => {
     const tick = () => {
