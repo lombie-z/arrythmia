@@ -631,41 +631,48 @@ export function AlbumViewport() {
         <VhsOverlay active={isPlaying && phase !== "bsod"} containerRef={containerRef} />
 
         {/* Section progress bar */}
-        {!isComplete && loaded && !isStamping && phase !== "bsod" && (
-          <div
-            className="absolute left-0 top-0 bottom-0"
-            style={{ width: 6, zIndex: 60, pointerEvents: "none" }}
-          >
+        {(() => {
+          const barW = 10;
+          const barZ = 60;
+          const showGlitch = phase === "bsod" || isStamping;
+          const quantized = Math.floor(sectionProgress * 15) / 15;
+          if (!loaded || isComplete) return null;
+          if (showGlitch) return (
             <div
-              style={{
-                position: "absolute",
-                bottom: 0,
-                left: 0,
-                right: 0,
-                height: `${sectionProgress * 100}%`,
-                background: "rgba(255, 255, 255, 0.3)",
-                transition: phase === "idle" && sectionProgress === 0 ? "height 0.15s ease-out" : "none",
-              }}
-            />
-          </div>
-        )}
-        {(phase === "bsod" || isStamping) && loaded && (
-          <div
-            className="absolute left-0 top-0 bottom-0"
-            style={{ width: 6, zIndex: 60, pointerEvents: "none" }}
-          >
+              className="absolute left-0 top-0 bottom-0"
+              style={{ width: barW, zIndex: barZ, pointerEvents: "none" }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  background: "#ff0000",
+                  animation: "progress-bar-glitch 0.3s steps(1) infinite",
+                }}
+              />
+            </div>
+          );
+          return (
             <div
-              style={{
-                position: "absolute",
-                bottom: 0,
-                left: 0,
-                right: 0,
-                background: "#ff0000",
-                animation: "progress-bar-glitch 0.3s steps(1) infinite",
-              }}
-            />
-          </div>
-        )}
+              className="absolute left-0 top-0 bottom-0"
+              style={{ width: barW, zIndex: barZ, pointerEvents: "none" }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  height: `${quantized * 100}%`,
+                  background: "rgba(255, 255, 255, 0.3)",
+                  transition: phase === "idle" && sectionProgress === 0 ? "height 0.15s ease-out" : "none",
+                }}
+              />
+            </div>
+          );
+        })()}
 
         {/* Retro player — hidden during BSOD */}
         {phase !== "bsod" && <RetroPlayer

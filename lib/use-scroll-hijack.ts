@@ -666,12 +666,16 @@ export function useScrollHijack() {
   );
 
   const effectiveProgress = (() => {
-    const { phase: p, sectionProgress: sp } = state;
+    const { phase: p, sectionProgress: sp, selectionIndex: idx, dragProgress: dp } = state;
     if (p === "complete") return 0;
-    if (p === "closing" || p === "masking" || p === "dissolving") return 1;
-    if (p === "dragging") return 1;
+
+    const isDragSection = idx === DRAG_AFTER_SELECTION - 1;
+
+    if (p === "dragging") return isDragSection ? 0.85 + dp * 0.15 : 1;
+    if (p === "closing" || p === "masking" || p === "dissolving") return isDragSection ? 0.85 : 1;
     if (p === "bsod") return 1;
-    return sp;
+
+    return isDragSection ? sp * 0.85 : sp;
   })();
 
   const { selectionIndex: si, drawnSegments: ds } = state;
