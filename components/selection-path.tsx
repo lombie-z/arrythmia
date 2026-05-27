@@ -4,7 +4,7 @@ import type { AnchorPoint } from "@/lib/types";
 
 const ANCHOR_SIZE = 7;
 const HALF_ANCHOR = ANCHOR_SIZE / 2;
-const LINE_COLOR = "#2563eb";
+const LINE_COLOR = "#8b9db7";
 const ANCHOR_FILL = "#ffffff";
 const ANCHOR_STROKE = "#2563eb";
 

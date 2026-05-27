@@ -16,7 +16,7 @@ const DRAG_IN_STEPS = 50;
 const BSOD_AFTER_SELECTION = 6;
 const BSOD_STEPS = 40;
 const PRE_BSOD_GLITCH = 800;
-const STANDARD_SCROLL_EFFORT = 50;
+const STANDARD_SCROLL_EFFORT = 65;
 const MAX_SELECTION_POINTS = Math.max(
   ...ALBUM_DATA.layers
     .filter((l) => !l.collageItems)
@@ -52,6 +52,7 @@ export function useScrollHijack() {
   const stateRef = useRef(state);
   stateRef.current = state;
 
+  const bsodRestartRef = useRef(false);
   const momentumRef = useRef(0);
   const momentumTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -85,16 +86,7 @@ export function useScrollHijack() {
 
   const advanceRaw = useCallback(
     (steps: number) => {
-      if (animatingRef.current) {
-        if (bsodShutdownRef.current && performance.now() - bsodShutdownStartRef.current >= 4000) {
-          animatingRef.current = false;
-          momentumRef.current = 0;
-          if (momentumTimer.current) { clearInterval(momentumTimer.current); momentumTimer.current = null; }
-          const sel = stateRef.current.selectionIndex;
-          setState({ phase: sel >= totalSelections ? "complete" : "idle", selectionIndex: sel, sectionProgress: 0, drawnSegments: 0, dragProgress: 0, dragInProgress: 0, bsodProgress: 0 });
-        }
-        return;
-      }
+      if (animatingRef.current) return;
       const { selectionIndex, drawnSegments, phase: curPhase } = stateRef.current;
 
       if (curPhase === "dragging") {
@@ -162,43 +154,7 @@ export function useScrollHijack() {
             clearInterval(momentumTimer.current);
             momentumTimer.current = null;
           }
-          // Hold 1800ms + CRT off 400ms + dark 1600ms = 3800ms
-          // CRT-on is a visual overlay that doesn't block scroll
-          // Use both setTimeout AND rAF polling as safety net
-          // (mobile browsers throttle setTimeout in background/low-power)
-          const shutdownStart = performance.now();
-          let shutdownDone = false;
-          let failsafeInterval: ReturnType<typeof setInterval> | null = null;
-          const unlockScroll = () => {
-            if (shutdownDone) return;
-            shutdownDone = true;
-            if (failsafeInterval) { clearInterval(failsafeInterval); failsafeInterval = null; }
-            momentumRef.current = 0;
-            if (momentumTimer.current) {
-              clearInterval(momentumTimer.current);
-              momentumTimer.current = null;
-            }
-            setState({
-              phase: curSel >= totalSelections ? "complete" : "idle",
-              selectionIndex: curSel,
-              sectionProgress: 0,
-              drawnSegments: 0,
-              dragProgress: 0,
-              dragInProgress: 0,
-              bsodProgress: 0,
-            });
-            animatingRef.current = false;
-          };
-          setTimeout(unlockScroll, 3800);
-          const pollShutdown = () => {
-            if (shutdownDone) return;
-            if (performance.now() - shutdownStart >= 3800) { unlockScroll(); return; }
-            requestAnimationFrame(pollShutdown);
-          };
-          requestAnimationFrame(pollShutdown);
-          failsafeInterval = setInterval(() => {
-            if (performance.now() - shutdownStart >= 3800) unlockScroll();
-          }, 200);
+          bsodRestartRef.current = true;
         } else {
           setState((s) => ({ ...s, bsodProgress: next }));
         }
@@ -256,7 +212,7 @@ export function useScrollHijack() {
           : rawIncrement;
         const nextProgress = Math.min(curProgress + easedIncrement, 1);
         const drawnItems = Math.min(
-          Math.floor(nextProgress * MAX_SELECTION_POINTS),
+          Math.ceil(nextProgress * normalItemCount),
           normalItemCount,
         );
 
@@ -413,16 +369,7 @@ export function useScrollHijack() {
 
   const retreatRaw = useCallback(
     (steps: number) => {
-      if (animatingRef.current) {
-        if (bsodShutdownRef.current && performance.now() - bsodShutdownStartRef.current >= 4000) {
-          animatingRef.current = false;
-          momentumRef.current = 0;
-          if (momentumTimer.current) { clearInterval(momentumTimer.current); momentumTimer.current = null; }
-          const sel = stateRef.current.selectionIndex;
-          setState({ phase: sel >= totalSelections ? "complete" : "idle", selectionIndex: sel, sectionProgress: 0, drawnSegments: 0, dragProgress: 0, dragInProgress: 0, bsodProgress: 0 });
-        }
-        return;
-      }
+      if (animatingRef.current) return;
       const { selectionIndex, drawnSegments, phase: curPhase } = stateRef.current;
 
       if (curPhase === "dragging") {
@@ -684,5 +631,27 @@ export function useScrollHijack() {
     && state.sectionProgress >= 1
     && ds > ALBUM_DATA.layers[si].collageItems!.filter((item) => !item.trail).length;
 
-  return { ...state, sectionProgress: effectiveProgress, isStamping, goToSection, bsodSeen: bsodSeenRef.current };
+  const restartFromBsod = useCallback(() => {
+    bsodShutdownRef.current = false;
+    bsodShutdownStartRef.current = 0;
+    bsodRestartRef.current = false;
+    momentumRef.current = 0;
+    if (momentumTimer.current) {
+      clearInterval(momentumTimer.current);
+      momentumTimer.current = null;
+    }
+    const sel = stateRef.current.selectionIndex;
+    setState({
+      phase: sel >= totalSelections ? "complete" : "idle",
+      selectionIndex: sel,
+      sectionProgress: 0,
+      drawnSegments: 0,
+      dragProgress: 0,
+      dragInProgress: 0,
+      bsodProgress: 0,
+    });
+    animatingRef.current = false;
+  }, [totalSelections]);
+
+  return { ...state, sectionProgress: effectiveProgress, isStamping, goToSection, restartFromBsod, bsodSeen: bsodSeenRef.current };
 }

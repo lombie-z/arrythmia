@@ -5,6 +5,122 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { SmokeOverlay } from "./smoke-overlay";
 import { StaticNoise } from "./static-noise";
 
+const GHOST_GRID = [
+  [0,0,0,1,1,1,1,1,0,0,0],
+  [0,0,1,1,1,1,1,1,1,0,0],
+  [0,1,1,1,1,1,1,1,1,1,0],
+  [1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,2,2,1,1,1,2,2,1,1],
+  [1,1,2,2,1,1,1,2,2,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1],
+  [1,0,1,1,0,1,1,0,1,1,0],
+  [0,0,1,0,0,0,1,0,0,1,0],
+];
+
+function PixelGhost() {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [eyeOff, setEyeOff] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      const svg = svgRef.current;
+      if (!svg) return;
+      const r = svg.getBoundingClientRect();
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      const dx = (e.clientX - cx) * 0.1;
+      const dy = (e.clientY - cy) * 0.1;
+      setEyeOff({
+        x: Math.round(Math.max(-1, Math.min(1, dx))),
+        y: Math.round(Math.max(-1, Math.min(1, dy))),
+      });
+    };
+    window.addEventListener("mousemove", onMove);
+    return () => window.removeEventListener("mousemove", onMove);
+  }, []);
+
+  const PWR_GRID = [
+    [0,0,0,1,1,0,0,0],
+    [0,0,0,1,1,0,0,0],
+    [0,1,0,1,1,0,1,0],
+    [1,1,0,1,1,0,1,1],
+    [1,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,1],
+    [1,1,0,0,0,0,1,1],
+    [0,1,1,0,0,1,1,0],
+    [0,0,1,1,1,1,0,0],
+  ];
+
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <svg
+        viewBox="0 0 8 10"
+        width={48}
+        height={60}
+        style={{ imageRendering: "pixelated", opacity: 0.6, filter: "drop-shadow(0 0 6px rgba(200,210,220,0.3))" }}
+      >
+        <g shapeRendering="crispEdges">
+          {PWR_GRID.flatMap((row, y) =>
+            row.map((cell, x) => {
+              if (cell === 0) return null;
+              return <rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} fill="#c8d0da" />;
+            }),
+          )}
+        </g>
+      </svg>
+      <svg
+        ref={svgRef}
+        viewBox="0 0 11 13"
+        width={77}
+        height={91}
+        style={{ imageRendering: "pixelated", opacity: 0.6, filter: "drop-shadow(0 0 8px rgba(200,210,220,0.3))" }}
+      >
+        <g shapeRendering="crispEdges">
+          {GHOST_GRID.flatMap((row, y) =>
+            row.map((cell, x) => {
+              if (cell === 0) return null;
+              return (
+                <rect
+                  key={`${x}-${y}`}
+                  x={x}
+                  y={y}
+                  width={1}
+                  height={1}
+                  fill="#c8d0da"
+                />
+              );
+            }),
+          )}
+          {GHOST_GRID.flatMap((row, y) =>
+            row.map((cell, x) => {
+              if (cell !== 2) return null;
+              const ex = x + eyeOff.x;
+              const ey = y + eyeOff.y;
+              if (ey < 0 || ey >= GHOST_GRID.length || ex < 0 || ex >= GHOST_GRID[0].length) return null;
+              if (GHOST_GRID[ey][ex] === 0) return null;
+              return (
+                <rect
+                  key={`eye-${x}-${y}`}
+                  x={ex}
+                  y={ey}
+                  width={1}
+                  height={1}
+                  fill="#111"
+                />
+              );
+            }),
+          )}
+        </g>
+      </svg>
+    </div>
+  );
+}
+
 function mulberry32(seed: number) {
   return () => {
     let t = (seed += 0x6d2b79f5);
@@ -49,45 +165,45 @@ const STAGES: { threshold: number; content: TextStage }[] = [
   {
     threshold: 0,
     content: {
-      face: ";)",
+      face: "404",
       message:
-        "Your PC ran into a problem and needs to restart. We’re just collecting some error info, and then we’ll restart for you.",
-      errorCode: "ARRHYTHMIA_TRACK_OVERFLOW",
+        "Got distracted, sorry. Looking for your page right now \u{1FAE1}.",
+      errorCode: "",
     },
   },
   {
     threshold: 25,
     content: {
-      face: ":/",
+      face: "403",
       message:
-        "Something doesn’t feel right. Running additional diagnostics...",
-      errorCode: "RHYTHM_DESYNC_DETECTED",
+        "Forbidden? I’m sure it’s fine. Will update.",
+      errorCode: "",
     },
   },
   {
     threshold: 50,
     content: {
-      face: ":(",
+      face: "418",
       message:
-        "Warning: Abnormal patterns detected. System integrity compromised.",
-      errorCode: "CARDIAC_FAULT_0xDEAD",
+        "That’s not even a real error code. There’s a lot of crap in here...",
+      errorCode: "",
     },
   },
   {
     threshold: 70,
     content: {
-      face: ">:(",
+      face: "500",
       message:
-        "CRITICAL: Core temperature rising. Thermal threshold exceeded.",
-      errorCode: "OVERHEAT_THRESHOLD_EXCEEDED",
+        "I think I made a mistake. Don’t keep scrolling.",
+      errorCode: "",
     },
   },
   {
     threshold: 80,
     content: {
-      face: ":|",
-      message: "it’s getting hot in here...",
-      errorCode: "MELTDOWN_IN_PROGRESS",
+      face: "",
+      message: "Thanks dude. Thanks. Now I have to restart it - little scroll addict, you.",
+      errorCode: "",
     },
   },
 ];
@@ -158,12 +274,16 @@ function useStaticNoise(active: boolean, volume: number) {
     const src = ctx.createBufferSource();
     src.buffer = buf;
     src.loop = true;
+    const lpf = ctx.createBiquadFilter();
+    lpf.type = "lowpass";
+    lpf.frequency.value = 300;
+    lpf.Q.value = 2;
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(0, ctx.currentTime);
     gain.gain.setTargetAtTime(volRef.current, ctx.currentTime, 0.5);
     gainRef.current = gain;
     srcRef.current = src;
-    src.connect(gain).connect(ctx.destination);
+    src.connect(lpf).connect(gain).connect(ctx.destination);
     src.start();
 
     return () => {
@@ -184,7 +304,7 @@ function useStaticNoise(active: boolean, volume: number) {
   }, [volume, active]);
 }
 
-export function BsodScreen({ progress }: { progress: number }) {
+export function BsodScreen({ progress, onRestart }: { progress: number; onRestart?: () => void }) {
   const eased = Math.pow(progress, 3.5);
   const pct = Math.min(100, Math.round(eased * 102));
   const deadPixels = useMemo(() => generateDeadPixels(40), []);
@@ -226,6 +346,25 @@ export function BsodScreen({ progress }: { progress: number }) {
   const isShutdown = pct >= 100;
   const shutdownStart = useRef(0);
   const [shutdownMs, setShutdownMs] = useState(0);
+  const crtSoundPlayed = useRef(false);
+
+  useEffect(() => {
+    if (!isShutdown || crtSoundPlayed.current || !audioUnlocked) return;
+    if (shutdownMs < 1800) return;
+    crtSoundPlayed.current = true;
+    const ctx = getAudioCtx();
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(180, now);
+    osc.frequency.exponentialRampToValueAtTime(30, now + 0.35);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.4);
+  }, [isShutdown, shutdownMs]);
 
   // White noise audio — whisper at start, crescendo toward 100%, intensifies during CRT off
   const noiseActive = !isShutdown || shutdownMs < 2200;
@@ -296,7 +435,7 @@ export function BsodScreen({ progress }: { progress: number }) {
   };
 
   return (
-    <div className="absolute inset-0 overflow-hidden" style={{ zIndex: 100 }}>
+    <div className="fixed inset-0 overflow-hidden" style={{ zIndex: 999 }}>
       <div
         className="absolute inset-0 flex flex-col justify-center px-[10%]"
         style={{
@@ -327,7 +466,9 @@ export function BsodScreen({ progress }: { progress: number }) {
                 ...fringeStyle,
               }}
             >
-              <GlitchText active={isGlitching}>{stage.face}</GlitchText>
+              <GlitchText active={isGlitching || !stage.face}>
+                {stage.face || "█▒▀▄▓█░"}
+              </GlitchText>
             </div>
 
             <div
@@ -352,18 +493,20 @@ export function BsodScreen({ progress }: { progress: number }) {
               {pct}% complete
             </div>
 
-            <div
-              className="relative text-white/60 mt-12"
-              style={{
-                fontSize: "clamp(8px, 1vw, 11px)",
-                ...fringeStyle,
-              }}
-            >
-              <GlitchText active={isGlitching}>
-                If you&apos;d like to know more, you can search online later for
-                this error: {stage.errorCode}
-              </GlitchText>
-            </div>
+            {stage.errorCode && (
+              <div
+                className="relative text-white/60 mt-12"
+                style={{
+                  fontSize: "clamp(8px, 1vw, 11px)",
+                  ...fringeStyle,
+                }}
+              >
+                <GlitchText active={isGlitching}>
+                  If you&apos;d like to know more, you can search online later for
+                  this error: {stage.errorCode}
+                </GlitchText>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -397,26 +540,6 @@ export function BsodScreen({ progress }: { progress: number }) {
           />
         ))}
       </div>
-
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(ellipse 80% 80% at 50% 50%, transparent 50%, rgba(0,0,0,0.55) 100%)",
-          zIndex: 3,
-        }}
-        aria-hidden="true"
-      />
-
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          boxShadow:
-            "inset 3px 0 8px rgba(255,0,0,0.12), inset -3px 0 8px rgba(0,255,255,0.12), inset 0 3px 8px rgba(255,0,255,0.08), inset 0 -3px 8px rgba(0,255,0,0.08)",
-          zIndex: 4,
-        }}
-        aria-hidden="true"
-      />
 
       <div
         className="absolute inset-0 pointer-events-none"
@@ -464,12 +587,21 @@ export function BsodScreen({ progress }: { progress: number }) {
         return (
           <div
             className="absolute inset-0"
-            style={{ zIndex: 10, background: "rgb(2, 8, 4)" }}
+            style={{ zIndex: 10, background: "rgb(2, 8, 4)", cursor: isDark ? "pointer" : undefined }}
+            onClick={isDark ? onRestart : undefined}
           >
             {isDark && (
-              <div className="absolute inset-0" style={{ opacity: 0.25 }}>
-                <StaticNoise />
-              </div>
+              <>
+                <div className="absolute inset-0" style={{ opacity: 0.25, pointerEvents: "none" }}>
+                  <StaticNoise />
+                </div>
+                <div
+                  className="absolute inset-0 flex items-center justify-center"
+                  style={{ zIndex: 1, animation: "ghost-float 2.8s ease-in-out infinite", pointerEvents: "none" }}
+                >
+                  <PixelGhost />
+                </div>
+              </>
             )}
             {showLine && (
               <div

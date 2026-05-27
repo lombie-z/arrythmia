@@ -10,6 +10,7 @@ interface RetroPlayerProps {
   onSkipBack: () => void;
   onPlayingChange?: (playing: boolean) => void;
   autoplay?: boolean;
+  isStamping?: boolean;
 }
 
 export function RetroPlayer({
@@ -19,6 +20,7 @@ export function RetroPlayer({
   onSkipBack,
   onPlayingChange,
   autoplay,
+  isStamping,
 }: RetroPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -89,6 +91,22 @@ export function RetroPlayer({
   }, [audioSrc]);
 
   useEffect(() => {
+    if (!isStamping) {
+      if (audioRef.current) audioRef.current.playbackRate = 1;
+      return;
+    }
+    const interval = setInterval(() => {
+      if (audioRef.current) {
+        audioRef.current.playbackRate = 0.7 + Math.random() * 0.7;
+      }
+    }, 80);
+    return () => {
+      clearInterval(interval);
+      if (audioRef.current) audioRef.current.playbackRate = 1;
+    };
+  }, [isStamping]);
+
+  useEffect(() => {
     if (autoplay && audioRef.current && audioRef.current.paused) {
       audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
     }
@@ -140,7 +158,7 @@ export function RetroPlayer({
         }}
       >
         <div className="flex items-center justify-between gap-3">
-          <div className="truncate tracking-wider uppercase" style={{ color: "#88aaff", fontSize: 10 }}>
+          <div className="truncate tracking-wider" style={{ color: "#88aaff", fontSize: 10 }}>
             {track?.title ?? "—"}
           </div>
           <button

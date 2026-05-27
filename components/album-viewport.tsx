@@ -26,6 +26,23 @@ function ShutdownTransition({ onDone }: { onDone: () => void }) {
   onDoneRef.current = onDone;
 
   useEffect(() => {
+    try {
+      const ctx = new AudioContext();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(30, now);
+      osc.frequency.exponentialRampToValueAtTime(120, now + 0.15);
+      osc.frequency.exponentialRampToValueAtTime(60, now + 0.3);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.linearRampToValueAtTime(0.08, now + 0.15);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.35);
+    } catch {}
+
     let raf: number;
     const tick = () => {
       const elapsed = performance.now() - startRef.current;
@@ -156,7 +173,7 @@ function buildNestedLayers(
 }
 
 export function AlbumViewport() {
-  const { phase, selectionIndex, drawnSegments, dragProgress, bsodProgress, sectionProgress, isStamping, goToSection, bsodSeen } = useScrollHijack();
+  const { phase, selectionIndex, drawnSegments, dragProgress, bsodProgress, sectionProgress, isStamping, goToSection, restartFromBsod, bsodSeen } = useScrollHijack();
   const [isPlaying, setIsPlaying] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const onPlayingChange = useCallback((playing: boolean) => setIsPlaying(playing), []);
@@ -583,7 +600,7 @@ export function AlbumViewport() {
         )}
 
         {/* BSOD transition between sections 7 and 8 */}
-        {phase === "bsod" && <BsodScreen progress={bsodProgress} />}
+        {phase === "bsod" && <BsodScreen progress={bsodProgress} onRestart={restartFromBsod} />}
 
         {/* CRT turn-on after BSOD — scroll works underneath */}
         {showCrtOn && (
@@ -680,6 +697,7 @@ export function AlbumViewport() {
           totalSections={layers.length}
           onSkipForward={skipForward}
           onSkipBack={skipBack}
+          isStamping={isStamping}
           onPlayingChange={onPlayingChange}
           autoplay={selectionIndex === layers.length - 1 && showCrtOn}
         />}
