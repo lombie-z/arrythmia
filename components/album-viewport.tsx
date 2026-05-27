@@ -156,7 +156,7 @@ function buildNestedLayers(
 }
 
 export function AlbumViewport() {
-  const { phase, selectionIndex, drawnSegments, dragProgress, bsodProgress, goToSection, bsodSeen } = useScrollHijack();
+  const { phase, selectionIndex, drawnSegments, dragProgress, bsodProgress, sectionProgress, goToSection, bsodSeen } = useScrollHijack();
   const [isPlaying, setIsPlaying] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const onPlayingChange = useCallback((playing: boolean) => setIsPlaying(playing), []);
@@ -629,6 +629,43 @@ export function AlbumViewport() {
         {!loaded && <LoadingScreen onDone={onLoadDone} />}
 
         <VhsOverlay active={isPlaying && phase !== "bsod"} containerRef={containerRef} />
+
+        {/* Section progress bar */}
+        {!isComplete && loaded && phase !== "bsod" && (
+          <div
+            className="absolute left-0 top-0 bottom-0"
+            style={{ width: 3, zIndex: 60, pointerEvents: "none" }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: `${sectionProgress * 100}%`,
+                background: "rgba(255, 255, 255, 0.3)",
+                transition: phase === "idle" && sectionProgress === 0 ? "height 0.15s ease-out" : "none",
+              }}
+            />
+          </div>
+        )}
+        {phase === "bsod" && loaded && (
+          <div
+            className="absolute left-0 top-0 bottom-0"
+            style={{ width: 3, zIndex: 60, pointerEvents: "none" }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                background: "#ff0000",
+                animation: "progress-bar-glitch 0.3s steps(1) infinite",
+              }}
+            />
+          </div>
+        )}
 
         {/* Retro player — hidden during BSOD */}
         {phase !== "bsod" && <RetroPlayer

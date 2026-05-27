@@ -16,10 +16,12 @@ const DRAG_IN_STEPS = 50;
 const BSOD_AFTER_SELECTION = 6;
 const BSOD_STEPS = 40;
 const PRE_BSOD_GLITCH = 800;
+const STANDARD_SCROLL_EFFORT = 50;
 
 interface ScrollState {
   phase: ScrollPhase;
   selectionIndex: number;
+  sectionProgress: number;
   drawnSegments: number;
   dragProgress: number;
   dragInProgress: number;
@@ -30,6 +32,7 @@ export function useScrollHijack() {
   const [state, setState] = useState<ScrollState>({
     phase: "idle",
     selectionIndex: 0,
+    sectionProgress: 0,
     drawnSegments: 0,
     dragProgress: 0,
     dragInProgress: 0,
@@ -83,7 +86,7 @@ export function useScrollHijack() {
           momentumRef.current = 0;
           if (momentumTimer.current) { clearInterval(momentumTimer.current); momentumTimer.current = null; }
           const sel = stateRef.current.selectionIndex;
-          setState({ phase: sel >= totalSelections ? "complete" : "idle", selectionIndex: sel, drawnSegments: 0, dragProgress: 0, dragInProgress: 0, bsodProgress: 0 });
+          setState({ phase: sel >= totalSelections ? "complete" : "idle", selectionIndex: sel, sectionProgress: 0, drawnSegments: 0, dragProgress: 0, dragInProgress: 0, bsodProgress: 0 });
         }
         return;
       }
@@ -102,6 +105,7 @@ export function useScrollHijack() {
             setState({
               phase: nextSel >= totalSelections ? "complete" : "idle",
               selectionIndex: nextSel,
+              sectionProgress: 0,
               drawnSegments: 0,
               dragProgress: 0,
               dragInProgress: 0,
@@ -172,6 +176,7 @@ export function useScrollHijack() {
             setState({
               phase: curSel >= totalSelections ? "complete" : "idle",
               selectionIndex: curSel,
+              sectionProgress: 0,
               drawnSegments: 0,
               dragProgress: 0,
               dragInProgress: 0,
@@ -241,6 +246,7 @@ export function useScrollHijack() {
                         ...s,
                         phase: "bsod",
                         selectionIndex: selectionIndex + 1,
+                        sectionProgress: 0,
                         drawnSegments: 0,
                         bsodProgress: 0,
                       }));
@@ -249,6 +255,7 @@ export function useScrollHijack() {
                       setState({
                         phase: nextSel >= totalSelections ? "complete" : "idle",
                         selectionIndex: nextSel,
+                        sectionProgress: 0,
                         drawnSegments: 0,
                         dragProgress: 0,
                         dragInProgress: 0,
@@ -291,6 +298,7 @@ export function useScrollHijack() {
                   setState({
                     phase: nextSel >= totalSelections ? "complete" : "idle",
                     selectionIndex: nextSel,
+                    sectionProgress: 0,
                     drawnSegments: 0,
                     dragProgress: 0,
                     dragInProgress: 0,
@@ -312,22 +320,24 @@ export function useScrollHijack() {
         return;
       }
 
-      const TARGET_POINTS = 50;
-      const layerSlowdown = selectionIndex === 7 ? 0.35 : 1;
-      const weight = Math.max(0.2, pointCount / TARGET_POINTS) * layerSlowdown;
-      const normalizedSteps = Math.max(1, Math.round(steps * weight));
-      const progress = drawnSegments / pointCount;
-      const remaining = 1 - (drawnSegments + normalizedSteps) / pointCount;
-      const nearEdge = progress < 0.12 || remaining < 0.12;
-      const easedSteps = nearEdge ? Math.max(1, Math.ceil(normalizedSteps * 0.3)) : normalizedSteps;
-      next = Math.min(drawnSegments + easedSteps, pointCount);
+      const { sectionProgress: curProgress } = stateRef.current;
+      const rawIncrement = steps / STANDARD_SCROLL_EFFORT;
+      const progressRemaining = 1 - curProgress;
+      const nearEdge = curProgress < 0.10 || progressRemaining < 0.15;
+      const easedIncrement = nearEdge
+        ? Math.max(0.004, rawIncrement * 0.3)
+        : rawIncrement;
+      const nextProgress = Math.min(curProgress + easedIncrement, 1);
+      next = nextProgress >= 1
+        ? pointCount
+        : Math.floor(nextProgress * pointCount);
 
-      if (next < pointCount) {
-        setState((s) => ({ ...s, phase: "drawing", drawnSegments: next }));
+      if (nextProgress < 1) {
+        setState((s) => ({ ...s, phase: "drawing", sectionProgress: nextProgress, drawnSegments: next }));
       } else {
         animatingRef.current = true;
         momentumRef.current = 0;
-        setState((s) => ({ ...s, phase: "closing", drawnSegments: pointCount }));
+        setState((s) => ({ ...s, phase: "closing", sectionProgress: 1, drawnSegments: pointCount }));
 
         setTimeout(() => {
           if (selectionIndex === DRAG_AFTER_SELECTION - 1) {
@@ -343,6 +353,7 @@ export function useScrollHijack() {
               setState({
                 phase: "complete",
                 selectionIndex: selectionIndex + 1,
+                sectionProgress: 0,
                 drawnSegments: 0,
                 dragProgress: 0,
                 dragInProgress: 0,
@@ -359,6 +370,7 @@ export function useScrollHijack() {
                 setState({
                   phase: nextSel >= totalSelections ? "complete" : "idle",
                   selectionIndex: nextSel,
+                  sectionProgress: 0,
                   drawnSegments: 0,
                   dragProgress: 0,
                   dragInProgress: 0,
@@ -382,7 +394,7 @@ export function useScrollHijack() {
           momentumRef.current = 0;
           if (momentumTimer.current) { clearInterval(momentumTimer.current); momentumTimer.current = null; }
           const sel = stateRef.current.selectionIndex;
-          setState({ phase: sel >= totalSelections ? "complete" : "idle", selectionIndex: sel, drawnSegments: 0, dragProgress: 0, dragInProgress: 0, bsodProgress: 0 });
+          setState({ phase: sel >= totalSelections ? "complete" : "idle", selectionIndex: sel, sectionProgress: 0, drawnSegments: 0, dragProgress: 0, dragInProgress: 0, bsodProgress: 0 });
         }
         return;
       }
@@ -397,6 +409,7 @@ export function useScrollHijack() {
           setState((s) => ({
             ...s,
             phase: "idle",
+            sectionProgress: 1,
             drawnSegments: pointCount,
             dragProgress: 0,
           }));
@@ -417,6 +430,7 @@ export function useScrollHijack() {
             ...s,
             phase: "drawing",
             selectionIndex: prevIdx,
+            sectionProgress: 1,
             drawnSegments: pointCount,
             bsodProgress: 0,
           }));
@@ -426,7 +440,7 @@ export function useScrollHijack() {
         return;
       }
 
-      if (drawnSegments > 0) {
+      if (drawnSegments > 0 || stateRef.current.sectionProgress > 0) {
         if (isCollageLayer(selectionIndex)) {
           momentumRef.current = 0;
           if (momentumTimer.current) {
@@ -480,8 +494,16 @@ export function useScrollHijack() {
           const next = Math.max(drawnSegments - 1, 0);
           setState((s) => ({ ...s, phase: "drawing", drawnSegments: next }));
         } else {
-          const next = Math.max(drawnSegments - steps, 0);
-          setState((s) => ({ ...s, phase: "drawing", drawnSegments: next }));
+          const { sectionProgress: curProgress } = stateRef.current;
+          const pointCount = getPointCount(selectionIndex);
+          const rawDecrement = steps / STANDARD_SCROLL_EFFORT;
+          const nearEdge = curProgress < 0.15 || curProgress > 0.90;
+          const easedDecrement = nearEdge
+            ? Math.max(0.004, rawDecrement * 0.3)
+            : rawDecrement;
+          const nextProgress = Math.max(curProgress - easedDecrement, 0);
+          const nextDrawn = Math.floor(nextProgress * pointCount);
+          setState((s) => ({ ...s, phase: "drawing", sectionProgress: nextProgress, drawnSegments: nextDrawn }));
         }
       } else if (selectionIndex > 0) {
         const prevIdx = selectionIndex - 1;
@@ -490,6 +512,7 @@ export function useScrollHijack() {
             ...s,
             phase: "dragging",
             selectionIndex: prevIdx,
+            sectionProgress: 1,
             drawnSegments: getPointCount(prevIdx),
             dragProgress: 1,
           }));
@@ -499,6 +522,7 @@ export function useScrollHijack() {
           setState((s) => ({
             ...s,
             phase: "bsod",
+            sectionProgress: 1,
             bsodProgress: 1,
           }));
           return;
@@ -507,6 +531,7 @@ export function useScrollHijack() {
         setState({
           phase: "idle",
           selectionIndex: prevIdx,
+          sectionProgress: 1,
           drawnSegments: prevPointCount,
           dragProgress: 0,
           dragInProgress: 0,
@@ -543,7 +568,7 @@ export function useScrollHijack() {
     (steps: number) => {
       advanceRaw(steps);
       const { selectionIndex: idx } = stateRef.current;
-      const noMomentum = idx === 7 || isCollageLayer(idx);
+      const noMomentum = isCollageLayer(idx);
       if (!noMomentum) startMomentum(steps * 0.6);
     },
     [advanceRaw, startMomentum, isCollageLayer],
@@ -553,7 +578,7 @@ export function useScrollHijack() {
     (steps: number) => {
       retreatRaw(steps);
       const { selectionIndex: idx } = stateRef.current;
-      const noMomentum = idx === 7 || isCollageLayer(idx);
+      const noMomentum = isCollageLayer(idx);
       if (!noMomentum) startMomentum(-steps * 0.6);
     },
     [retreatRaw, startMomentum, isCollageLayer],
@@ -634,6 +659,7 @@ export function useScrollHijack() {
       setState({
         phase: index >= totalSelections ? "complete" : "idle",
         selectionIndex: index,
+        sectionProgress: segments > 0 ? 1 : 0,
         drawnSegments: segments,
         dragProgress: 0,
         dragInProgress: 0,
@@ -643,5 +669,20 @@ export function useScrollHijack() {
     [totalSelections],
   );
 
-  return { ...state, goToSection, bsodSeen: bsodSeenRef.current };
+  const effectiveProgress = (() => {
+    const { phase: p, selectionIndex: si, sectionProgress: sp, drawnSegments: ds } = state;
+    if (p === "complete") return 0;
+    if (p === "closing" || p === "masking" || p === "dissolving") return 1;
+    if (p === "dragging") return 1;
+    if (p === "bsod") return 1;
+    if (si >= totalSelections) return 0;
+    const layer = ALBUM_DATA.layers[si];
+    if (layer?.collageItems) {
+      const pc = getPointCount(si);
+      return pc > 0 ? ds / pc : 0;
+    }
+    return sp;
+  })();
+
+  return { ...state, sectionProgress: effectiveProgress, goToSection, bsodSeen: bsodSeenRef.current };
 }
