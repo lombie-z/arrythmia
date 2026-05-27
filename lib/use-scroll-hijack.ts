@@ -121,10 +121,10 @@ export function useScrollHijack() {
         const isTouch = "ontouchstart" in window;
         let slowdown: number;
         if (isTouch) {
-          if (curBsod >= 0.95) slowdown = 0.008;
-          else if (curBsod >= 0.85) slowdown = 0.02;
-          else if (curBsod >= 0.7) slowdown = 0.06;
-          else if (curBsod >= 0.5) slowdown = 0.15;
+          if (curBsod >= 0.95) slowdown = 0.05;
+          else if (curBsod >= 0.85) slowdown = 0.1;
+          else if (curBsod >= 0.7) slowdown = 0.2;
+          else if (curBsod >= 0.5) slowdown = 0.4;
           else slowdown = 1;
         } else {
           if (curBsod >= 0.95) slowdown = 0.001;
