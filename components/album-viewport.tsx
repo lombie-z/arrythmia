@@ -156,7 +156,7 @@ function buildNestedLayers(
 }
 
 export function AlbumViewport() {
-  const { phase, selectionIndex, drawnSegments, dragProgress, bsodProgress, sectionProgress, goToSection, bsodSeen } = useScrollHijack();
+  const { phase, selectionIndex, drawnSegments, dragProgress, bsodProgress, sectionProgress, isStamping, goToSection, bsodSeen } = useScrollHijack();
   const [isPlaying, setIsPlaying] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const onPlayingChange = useCallback((playing: boolean) => setIsPlaying(playing), []);
@@ -631,10 +631,10 @@ export function AlbumViewport() {
         <VhsOverlay active={isPlaying && phase !== "bsod"} containerRef={containerRef} />
 
         {/* Section progress bar */}
-        {!isComplete && loaded && phase !== "bsod" && (
+        {!isComplete && loaded && !isStamping && phase !== "bsod" && (
           <div
             className="absolute left-0 top-0 bottom-0"
-            style={{ width: 3, zIndex: 60, pointerEvents: "none" }}
+            style={{ width: 6, zIndex: 60, pointerEvents: "none" }}
           >
             <div
               style={{
@@ -649,10 +649,10 @@ export function AlbumViewport() {
             />
           </div>
         )}
-        {phase === "bsod" && loaded && (
+        {(phase === "bsod" || isStamping) && loaded && (
           <div
             className="absolute left-0 top-0 bottom-0"
-            style={{ width: 3, zIndex: 60, pointerEvents: "none" }}
+            style={{ width: 6, zIndex: 60, pointerEvents: "none" }}
           >
             <div
               style={{

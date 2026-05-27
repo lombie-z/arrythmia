@@ -17,6 +17,11 @@ const BSOD_AFTER_SELECTION = 6;
 const BSOD_STEPS = 40;
 const PRE_BSOD_GLITCH = 800;
 const STANDARD_SCROLL_EFFORT = 50;
+const MAX_SELECTION_POINTS = Math.max(
+  ...ALBUM_DATA.layers
+    .filter((l) => !l.collageItems)
+    .map((l) => l.selection.points.length),
+);
 
 interface ScrollState {
   phase: ScrollPhase;
@@ -206,42 +211,85 @@ export function useScrollHijack() {
       let next: number;
 
       if (isCollageLayer(selectionIndex)) {
-        const layer = ALBUM_DATA.layers[selectionIndex];
-        const items = bsodSeenRef.current
-          ? layer.collageItems!.filter((item) => !item.trail)
-          : layer.collageItems!;
-        let tickAcc = 0;
-        let isTrailTick = false;
-        for (const item of items) {
-          const weight = item.trail ? item.trail.count : 1;
-          if (drawnSegments < tickAcc + weight) {
-            isTrailTick = !!item.trail;
-            break;
-          }
-          tickAcc += weight;
-        }
-
         momentumRef.current = 0;
         if (momentumTimer.current) {
           clearInterval(momentumTimer.current);
           momentumTimer.current = null;
         }
 
-        if (isTrailTick && !bsodSeenRef.current) {
-          // Auto-advance all trail ticks (first visit only)
+        const layer = ALBUM_DATA.layers[selectionIndex];
+        const normalItemCount = layer.collageItems!.filter((item) => !item.trail).length;
+        const { sectionProgress: curProgress } = stateRef.current;
+
+        if (curProgress >= 1) {
+          if (bsodSeenRef.current) {
+            animatingRef.current = true;
+            setState((s) => ({ ...s, phase: "closing", sectionProgress: 1, drawnSegments: normalItemCount }));
+            setTimeout(() => {
+              setState((s) => ({ ...s, phase: "masking" }));
+              setTimeout(() => {
+                setState((s) => ({ ...s, phase: "dissolving" }));
+                setTimeout(() => {
+                  const nextSel = selectionIndex + 1;
+                  setState({
+                    phase: nextSel >= totalSelections ? "complete" : "idle",
+                    selectionIndex: nextSel,
+                    sectionProgress: 0,
+                    drawnSegments: 0,
+                    dragProgress: 0,
+                    dragInProgress: 0,
+                    bsodProgress: 0,
+                  });
+                  requestAnimationFrame(() => { animatingRef.current = false; });
+                }, DISSOLVE_DURATION);
+              }, MASK_DURATION);
+            }, 50);
+          }
+          return;
+        }
+
+        const rawIncrement = steps / STANDARD_SCROLL_EFFORT;
+        const progressRemaining = 1 - curProgress;
+        const nearEdge = curProgress < 0.10 || progressRemaining < 0.15;
+        const easedIncrement = nearEdge
+          ? Math.max(0.004, rawIncrement * 0.3)
+          : rawIncrement;
+        const nextProgress = Math.min(curProgress + easedIncrement, 1);
+        const drawnItems = Math.min(
+          Math.floor(nextProgress * MAX_SELECTION_POINTS),
+          normalItemCount,
+        );
+
+        if (nextProgress < 1) {
+          setState((s) => ({
+            ...s,
+            phase: "drawing",
+            sectionProgress: nextProgress,
+            drawnSegments: drawnItems,
+          }));
+          return;
+        }
+
+        setState((s) => ({ ...s, sectionProgress: 1, drawnSegments: normalItemCount }));
+
+        if (!bsodSeenRef.current) {
           animatingRef.current = true;
+          const totalTrailTicks = layer.collageItems!.reduce(
+            (sum, item) => sum + (item.trail ? item.trail.count : 0),
+            0,
+          );
+          let tick = 0;
           const autoAdvance = setInterval(() => {
-            const { drawnSegments: cur } = stateRef.current;
-            if (cur >= pointCount) {
+            tick++;
+            if (tick >= totalTrailTicks) {
               clearInterval(autoAdvance);
-              // Auto-trigger closing → masking → BSOD
-              setState((s) => ({ ...s, phase: "closing", drawnSegments: pointCount }));
+              setState((s) => ({ ...s, phase: "closing", drawnSegments: normalItemCount + totalTrailTicks }));
               setTimeout(() => {
                 setState((s) => ({ ...s, phase: "masking" }));
                 setTimeout(() => {
                   setState((s) => ({ ...s, phase: "dissolving" }));
                   setTimeout(() => {
-                    if (selectionIndex === BSOD_AFTER_SELECTION && !bsodSeenRef.current) {
+                    if (selectionIndex === BSOD_AFTER_SELECTION) {
                       setState((s) => ({
                         ...s,
                         phase: "bsod",
@@ -263,60 +311,36 @@ export function useScrollHijack() {
                       });
                     }
                     animatingRef.current = false;
-                  }, selectionIndex === BSOD_AFTER_SELECTION && !bsodSeenRef.current ? PRE_BSOD_GLITCH : DISSOLVE_DURATION);
+                  }, selectionIndex === BSOD_AFTER_SELECTION ? PRE_BSOD_GLITCH : DISSOLVE_DURATION);
                 }, MASK_DURATION);
               }, 50);
               return;
             }
-            setState((s) => ({ ...s, phase: "drawing", drawnSegments: cur + 1 }));
+            setState((s) => ({ ...s, phase: "drawing", drawnSegments: normalItemCount + tick }));
           }, 30);
-          return;
-        }
-
-        if (drawnSegments >= pointCount) {
-          if (bsodSeenRef.current && curPhase === "idle") {
-            setState((s) => ({ ...s, phase: "drawing" }));
-            return;
-          }
+        } else {
           animatingRef.current = true;
-          setState((s) => ({ ...s, phase: "closing", drawnSegments: pointCount }));
+          setState((s) => ({ ...s, phase: "closing" }));
           setTimeout(() => {
             setState((s) => ({ ...s, phase: "masking" }));
             setTimeout(() => {
               setState((s) => ({ ...s, phase: "dissolving" }));
               setTimeout(() => {
-                if (selectionIndex === BSOD_AFTER_SELECTION && !bsodSeenRef.current) {
-                  setState((s) => ({
-                    ...s,
-                    phase: "bsod",
-                    selectionIndex: selectionIndex + 1,
-                    drawnSegments: 0,
-                    bsodProgress: 0,
-                  }));
-                } else {
-                  const nextSel = selectionIndex + 1;
-                  setState({
-                    phase: nextSel >= totalSelections ? "complete" : "idle",
-                    selectionIndex: nextSel,
-                    sectionProgress: 0,
-                    drawnSegments: 0,
-                    dragProgress: 0,
-                    dragInProgress: 0,
-                    bsodProgress: 0,
-                  });
-                }
+                const nextSel = selectionIndex + 1;
+                setState({
+                  phase: nextSel >= totalSelections ? "complete" : "idle",
+                  selectionIndex: nextSel,
+                  sectionProgress: 0,
+                  drawnSegments: 0,
+                  dragProgress: 0,
+                  dragInProgress: 0,
+                  bsodProgress: 0,
+                });
                 requestAnimationFrame(() => { animatingRef.current = false; });
-              }, selectionIndex === BSOD_AFTER_SELECTION && !bsodSeenRef.current ? PRE_BSOD_GLITCH : DISSOLVE_DURATION);
+              }, DISSOLVE_DURATION);
             }, MASK_DURATION);
           }, 50);
-          return;
         }
-
-        if (!bsodSeenRef.current) {
-          animatingRef.current = true;
-          setTimeout(() => { animatingRef.current = false; }, 400);
-        }
-        setState((s) => ({ ...s, phase: "drawing", drawnSegments: drawnSegments + 1 }));
         return;
       }
 
@@ -328,9 +352,10 @@ export function useScrollHijack() {
         ? Math.max(0.004, rawIncrement * 0.3)
         : rawIncrement;
       const nextProgress = Math.min(curProgress + easedIncrement, 1);
-      next = nextProgress >= 1
-        ? pointCount
-        : Math.floor(nextProgress * pointCount);
+      next = Math.min(
+        Math.floor(nextProgress * MAX_SELECTION_POINTS),
+        pointCount,
+      );
 
       if (nextProgress < 1) {
         setState((s) => ({ ...s, phase: "drawing", sectionProgress: nextProgress, drawnSegments: next }));
@@ -447,52 +472,20 @@ export function useScrollHijack() {
             clearInterval(momentumTimer.current);
             momentumTimer.current = null;
           }
-
           const layer = ALBUM_DATA.layers[selectionIndex];
-          const items = bsodSeenRef.current
-            ? layer.collageItems!.filter((item) => !item.trail)
-            : layer.collageItems!;
-          // Find where we are and if it's a trail
-          let tickAcc = 0;
-          let isTrailTick = false;
-          let trailStartTick = 0;
-          for (const item of items) {
-            const weight = item.trail ? item.trail.count : 1;
-            if (drawnSegments <= tickAcc + weight) {
-              isTrailTick = !!item.trail;
-              trailStartTick = tickAcc;
-              break;
-            }
-            tickAcc += weight;
-          }
-
-          if (isTrailTick) {
-            // Auto-reverse all trail ticks back to the start of trails
-            // Find where the first trail item starts
-            let firstTrailTick = 0;
-            for (const item of items) {
-              if (item.trail) break;
-              firstTrailTick += 1;
-            }
-            animatingRef.current = true;
-            const autoRetreat = setInterval(() => {
-              const { drawnSegments: cur } = stateRef.current;
-              if (cur <= firstTrailTick) {
-                clearInterval(autoRetreat);
-                animatingRef.current = false;
-                return;
-              }
-              setState((s) => ({ ...s, phase: "drawing", drawnSegments: cur - 1 }));
-            }, 30);
-            return;
-          }
-
-          if (!bsodSeenRef.current) {
-            animatingRef.current = true;
-            setTimeout(() => { animatingRef.current = false; }, 400);
-          }
-          const next = Math.max(drawnSegments - 1, 0);
-          setState((s) => ({ ...s, phase: "drawing", drawnSegments: next }));
+          const normalItemCount = layer.collageItems!.filter((item) => !item.trail).length;
+          const { sectionProgress: curProgress } = stateRef.current;
+          const rawDecrement = steps / STANDARD_SCROLL_EFFORT;
+          const nearEdge = curProgress < 0.15 || curProgress > 0.90;
+          const easedDecrement = nearEdge
+            ? Math.max(0.004, rawDecrement * 0.3)
+            : rawDecrement;
+          const nextProgress = Math.max(curProgress - easedDecrement, 0);
+          const drawnItems = Math.min(
+            Math.floor(nextProgress * MAX_SELECTION_POINTS),
+            normalItemCount,
+          );
+          setState((s) => ({ ...s, phase: "drawing", sectionProgress: nextProgress, drawnSegments: drawnItems }));
         } else {
           const { sectionProgress: curProgress } = stateRef.current;
           const pointCount = getPointCount(selectionIndex);
@@ -502,7 +495,10 @@ export function useScrollHijack() {
             ? Math.max(0.004, rawDecrement * 0.3)
             : rawDecrement;
           const nextProgress = Math.max(curProgress - easedDecrement, 0);
-          const nextDrawn = Math.floor(nextProgress * pointCount);
+          const nextDrawn = Math.min(
+            Math.floor(nextProgress * MAX_SELECTION_POINTS),
+            pointCount,
+          );
           setState((s) => ({ ...s, phase: "drawing", sectionProgress: nextProgress, drawnSegments: nextDrawn }));
         }
       } else if (selectionIndex > 0) {
@@ -670,19 +666,19 @@ export function useScrollHijack() {
   );
 
   const effectiveProgress = (() => {
-    const { phase: p, selectionIndex: si, sectionProgress: sp, drawnSegments: ds } = state;
+    const { phase: p, sectionProgress: sp } = state;
     if (p === "complete") return 0;
     if (p === "closing" || p === "masking" || p === "dissolving") return 1;
     if (p === "dragging") return 1;
     if (p === "bsod") return 1;
-    if (si >= totalSelections) return 0;
-    const layer = ALBUM_DATA.layers[si];
-    if (layer?.collageItems) {
-      const pc = getPointCount(si);
-      return pc > 0 ? ds / pc : 0;
-    }
     return sp;
   })();
 
-  return { ...state, sectionProgress: effectiveProgress, goToSection, bsodSeen: bsodSeenRef.current };
+  const { selectionIndex: si, drawnSegments: ds } = state;
+  const isStamping = si < totalSelections
+    && !!ALBUM_DATA.layers[si].collageItems
+    && state.sectionProgress >= 1
+    && ds > ALBUM_DATA.layers[si].collageItems!.filter((item) => !item.trail).length;
+
+  return { ...state, sectionProgress: effectiveProgress, isStamping, goToSection, bsodSeen: bsodSeenRef.current };
 }
