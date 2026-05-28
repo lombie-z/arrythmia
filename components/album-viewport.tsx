@@ -18,6 +18,182 @@ import { VhsOverlay } from "./vhs-overlay";
 import { StaticNoise } from "./static-noise";
 
 
+const PWR_GRID = [
+  [0,0,0,1,1,0,0,0],
+  [0,0,0,1,1,0,0,0],
+  [0,1,0,1,1,0,1,0],
+  [1,1,0,1,1,0,1,1],
+  [1,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,1],
+  [1,1,0,0,0,0,1,1],
+  [0,1,1,0,0,1,1,0],
+  [0,0,1,1,1,1,0,0],
+];
+
+const PIXEL_R = [
+  [0,0,0,1,0,0],
+  [0,0,1,1,1,0],
+  [0,1,1,0,1,0],
+  [0,1,1,0,0,0],
+  [0,1,1,0,0,0],
+  [0,1,1,0,0,0],
+  [0,1,1,0,0,0],
+  [1,1,1,1,0,0],
+];
+
+function PixelSvg({ grid, size, color, glow }: { grid: number[][]; size: number; color: string; glow?: string }) {
+  const w = grid[0].length;
+  const h = grid.length;
+  return (
+    <svg
+      viewBox={`0 0 ${w} ${h}`}
+      width={size * w / h * (h / w)}
+      height={size}
+      style={{ imageRendering: "pixelated", filter: glow ? `drop-shadow(0 0 8px ${glow})` : undefined }}
+    >
+      <g shapeRendering="crispEdges">
+        {grid.flatMap((row, y) =>
+          row.map((cell, x) => {
+            if (cell === 0) return null;
+            return <rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} fill={color} />;
+          }),
+        )}
+      </g>
+    </svg>
+  );
+}
+
+function PowerOnScreen({ onPowerOn }: { onPowerOn: () => void }) {
+  const [turning, setTurning] = useState(false);
+  const [ms, setMs] = useState(0);
+  const startRef = useRef(0);
+
+  useEffect(() => {
+    if (!turning) return;
+    startRef.current = performance.now();
+    let raf: number;
+    const tick = () => {
+      const elapsed = performance.now() - startRef.current;
+      setMs(elapsed);
+      if (elapsed > 1200) {
+        onPowerOn();
+        return;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [turning, onPowerOn]);
+
+  const handleClick = useCallback(() => {
+    if (turning) return;
+    try {
+      const ctx = new AudioContext();
+      ctx.resume();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(30, now);
+      osc.frequency.exponentialRampToValueAtTime(120, now + 0.15);
+      osc.frequency.exponentialRampToValueAtTime(60, now + 0.3);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.linearRampToValueAtTime(0.08, now + 0.15);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.35);
+    } catch {}
+    setTurning(true);
+  }, [turning]);
+
+  const dotT = turning && ms < 200 ? ms / 200 : -1;
+  const expandT = turning && ms >= 200 && ms < 400 ? (ms - 200) / 200 : -1;
+  const fadeT = turning && ms >= 400 ? Math.max(0, 1 - (ms - 400) / 800) : turning ? 1 : 0;
+
+  let sx = 1;
+  let sy = 1;
+  let br = 0;
+  if (dotT >= 0) {
+    sy = 0.005;
+    sx = 0.01 + dotT * 0.99;
+    br = 1 - dotT * 0.2;
+  } else if (expandT >= 0) {
+    sy = 0.005 + expandT * 0.995;
+    sx = 1;
+    br = Math.max(0, 0.8 - expandT * 0.8);
+  }
+  const showLine = dotT >= 0 || expandT >= 0;
+
+  return (
+    <div
+      className="fixed inset-0"
+      style={{
+        zIndex: 9999,
+        cursor: turning ? "default" : "pointer",
+        pointerEvents: turning && ms >= 400 ? "none" : "auto",
+      }}
+      onClick={handleClick}
+    >
+      {/* Dark background — stays solid until fade phase */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: "rgb(2, 8, 4)",
+          opacity: turning && ms >= 400 ? Math.max(0, 1 - (ms - 400) / 800) : 1,
+        }}
+      />
+      {!turning && (
+        <>
+          <div className="absolute inset-0" style={{ opacity: 0.25, pointerEvents: "none" }}>
+            <StaticNoise />
+          </div>
+          <div
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ zIndex: 1, animation: "ghost-float 2.8s ease-in-out infinite", pointerEvents: "none" }}
+          >
+            <div className="flex flex-col items-center gap-6">
+              <div style={{ opacity: 0.7 }}>
+                <PixelSvg grid={PWR_GRID} size={72} color="#8ba8d4" glow="rgba(80, 130, 255, 0.5)" />
+              </div>
+              <div style={{ opacity: 0.5 }}>
+                <PixelSvg grid={PIXEL_R} size={48} color="#8ba8d4" glow="rgba(80, 130, 255, 0.3)" />
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+      {turning && (
+        <>
+          {ms < 400 && (
+            <div className="absolute inset-0" style={{ opacity: 0.25, pointerEvents: "none" }}>
+              <StaticNoise />
+            </div>
+          )}
+          {showLine && (
+            <div
+              className="absolute"
+              style={{
+                left: "50%",
+                top: "50%",
+                width: `${sx * 100}%`,
+                height: `${Math.max(2, sy * 100)}%`,
+                transform: "translate(-50%, -50%)",
+                background: `rgb(${Math.round(200 + br * 55)}, ${Math.round(200 + br * 55)}, ${Math.round(210 + br * 45)})`,
+                boxShadow: br > 0.3
+                  ? `0 0 ${br * 40}px ${br * 15}px rgba(255,255,255,${br * 0.4})`
+                  : "none",
+                zIndex: 2,
+              }}
+            />
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 /** CRT turn-on overlay after BSOD shutdown — purely visual, doesn't block scroll */
 function ShutdownTransition({ onDone }: { onDone: () => void }) {
   const [ms, setMs] = useState(0);
@@ -191,6 +367,7 @@ export function AlbumViewport() {
       : finalImage;
   const isComplete = phase === "complete";
 
+  const [poweredOn, setPoweredOn] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const onLoadDone = useCallback(() => setLoaded(true), []);
 
@@ -642,8 +819,9 @@ export function AlbumViewport() {
         {/* Social links on final screen */}
         <SocialLinks visible={isComplete} />
 
-        {/* Loading screen inside the content area */}
-        {!loaded && <LoadingScreen onDone={onLoadDone} />}
+        {/* Loading screen runs underneath, power-on screen overlays it */}
+        {!loaded && <LoadingScreen onDone={onLoadDone} paused={!poweredOn} />}
+        {!poweredOn && <PowerOnScreen onPowerOn={() => setPoweredOn(true)} />}
 
         <VhsOverlay active={isPlaying && phase !== "bsod"} containerRef={containerRef} />
 
@@ -699,7 +877,7 @@ export function AlbumViewport() {
           onSkipBack={skipBack}
           isStamping={isStamping}
           onPlayingChange={onPlayingChange}
-          autoplay={selectionIndex === layers.length - 1 && showCrtOn}
+          autoplay={(selectionIndex === 0 && loaded && poweredOn) || (selectionIndex === layers.length - 1 && showCrtOn)}
         />}
       </div>
 

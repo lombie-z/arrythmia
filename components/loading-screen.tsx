@@ -14,8 +14,10 @@ type Phase = "filling" | "fading-r" | "revealing";
 
 export function LoadingScreen({
   onDone,
+  paused,
 }: {
   onDone: () => void;
+  paused?: boolean;
 }) {
   const [fillPercent, setFillPercent] = useState(0);
   const [phase, setPhase] = useState<Phase>("filling");
@@ -41,9 +43,18 @@ export function LoadingScreen({
     setTimeout(() => { imagesReadyRef.current = true; }, 8000);
   }, []);
 
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
+
   useEffect(() => {
     const animate = () => {
       if (doneRef.current) return;
+
+      if (pausedRef.current) {
+        startRef.current = Date.now();
+        rafRef.current = requestAnimationFrame(animate);
+        return;
+      }
 
       const elapsed = Date.now() - startRef.current;
       const canFinish = elapsed >= MIN_DISPLAY_MS && imagesReadyRef.current;

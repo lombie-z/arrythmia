@@ -62,13 +62,13 @@ function PixelGhost() {
         viewBox="0 0 8 10"
         width={48}
         height={60}
-        style={{ imageRendering: "pixelated", opacity: 0.6, filter: "drop-shadow(0 0 6px rgba(200,210,220,0.3))" }}
+        style={{ imageRendering: "pixelated", opacity: 0.6, filter: "drop-shadow(0 0 8px rgba(255, 60, 60, 0.5))" }}
       >
         <g shapeRendering="crispEdges">
           {PWR_GRID.flatMap((row, y) =>
             row.map((cell, x) => {
               if (cell === 0) return null;
-              return <rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} fill="#c8d0da" />;
+              return <rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} fill="#d4888a" />;
             }),
           )}
         </g>
