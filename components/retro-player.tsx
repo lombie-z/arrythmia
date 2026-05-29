@@ -50,7 +50,7 @@ export function RetroPlayer({
     const shouldContinue = wasPlayingRef.current;
 
     if (prev) {
-      wasPlayingRef.current = !prev.paused;
+      if (!wasPlayingRef.current) wasPlayingRef.current = !prev.paused;
       prev.pause();
       prev.removeAttribute("src");
       prev.load();
@@ -69,8 +69,8 @@ export function RetroPlayer({
 
     const onMeta = () => setDuration(audio.duration);
     const onEnd = () => {
-      setIsPlaying(false);
-      wasPlayingRef.current = false;
+      wasPlayingRef.current = true;
+      onSkipForward();
     };
     audio.addEventListener("loadedmetadata", onMeta);
     audio.addEventListener("ended", onEnd);
@@ -82,7 +82,7 @@ export function RetroPlayer({
     return () => {
       audio.removeEventListener("loadedmetadata", onMeta);
       audio.removeEventListener("ended", onEnd);
-      wasPlayingRef.current = !audio.paused;
+      if (!wasPlayingRef.current) wasPlayingRef.current = !audio.paused;
       audio.pause();
       audio.removeAttribute("src");
       audio.load();
@@ -127,8 +127,10 @@ export function RetroPlayer({
     const audio = audioRef.current;
     if (!audio) return;
     if (audio.paused) {
+      wasPlayingRef.current = true;
       audio.play().then(() => setIsPlaying(true)).catch(() => {});
     } else {
+      wasPlayingRef.current = false;
       audio.pause();
       setIsPlaying(false);
     }

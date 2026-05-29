@@ -493,6 +493,24 @@ export function AlbumViewport() {
           </>
         )}
 
+        {/* Vitriol text overlay on section 2 */}
+        {selectionIndex >= 1 && selectionIndex <= 1 && !isComplete && (
+          <img
+            src="/images/vitriol-text.webp"
+            alt=""
+            draggable={false}
+            className="absolute select-none"
+            style={{
+              left: "3%",
+              top: "28%",
+              width: "30%",
+              zIndex: 12,
+              pointerEvents: "none",
+              objectFit: "contain",
+            }}
+          />
+        )}
+
         {/* Collage layer: pieces appear one at a time */}
         {activeLayer?.collageItems && !isDragging && drawnSegments > 0 && (() => {
           const allItems = activeLayer.collageItems!;
