@@ -167,7 +167,7 @@ const STAGES: { threshold: number; content: TextStage }[] = [
     content: {
       face: "404",
       message:
-        "Got distracted, sorry. Looking for your page right now \u{1FAE1}.",
+        "Got distracted, sorry. Looking for your page right now.",
       errorCode: "",
     },
   },
