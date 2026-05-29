@@ -507,6 +507,7 @@ export function AlbumViewport() {
               zIndex: 12,
               pointerEvents: "none",
               objectFit: "contain",
+              imageRendering: "pixelated",
             }}
           />
         )}
