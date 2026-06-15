@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useScrollHijack } from "@/lib/use-scroll-hijack";
 import { ALBUM_DATA } from "@/lib/album-data";
 import { ASPECT_RATIO } from "@/lib/constants";
@@ -348,10 +348,72 @@ function buildNestedLayers(
   return nested;
 }
 
+// How long the grey-static channel-change holds between scenes (ms). Short and
+// punchy so it reads as a channel-flick, not a dwell.
+const STATIC_DURATION = 320;
+
+// useLayoutEffect on the client (fires before paint, so the static covers the
+// new scene's first frame), useEffect on the server (no-op, avoids the SSR warn).
+const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
 export function AlbumViewport() {
   const { phase, selectionIndex, drawnSegments, dragProgress, bsodProgress, sectionProgress, isStamping, goToSection, restartFromBsod, bsodSeen } = useScrollHijack();
   const [isPlaying, setIsPlaying] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [staticBurst, setStaticBurst] = useState(false);
+  const prevSelRef = useRef(selectionIndex);
+  const staticTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Grey-static "channel change" between scenes. It comes on the instant the
+  // scene starts masking/dissolving to the *next* image (that's the window where
+  // the next scene was peeking through the cross-dissolve — the leftover flash),
+  // and stays up across the swap. The auto-hide timer is only armed once we've
+  // actually landed on the new scene, so it never hides mid-transition; it's
+  // self-resetting and torn down only on unmount, so it can't get "stuck". A
+  // *layout* effect so the static is committed before the new scene can paint.
+  // masking/dissolving only occur on real scene transitions, so this stays clear
+  // of the drag, BSOD and links-page flows.
+  const clearStatic = useCallback(() => {
+    if (staticTimerRef.current) { clearTimeout(staticTimerRef.current); staticTimerRef.current = null; }
+    setStaticBurst(false);
+  }, []);
+  useIsoLayoutEffect(() => {
+    const prev = prevSelRef.current;
+    const selChanged = selectionIndex !== prev;
+    prevSelRef.current = selectionIndex;
+
+    // Never during the BSOD flow or the final links page.
+    if (phase === "bsod" || phase === "complete" || selectionIndex >= ALBUM_DATA.layers.length) {
+      clearStatic();
+      return;
+    }
+    // The pre-BSOD dissolve (scene 6 before it's been seen) has its own glitch.
+    const preBsod = selectionIndex === 6 && !bsodSeen;
+
+    // `preBsod` only suppresses covering scene 6's *exit* into the BSOD (which
+    // has its own glitch) — it must NOT block the hide timer when arriving, or
+    // static from the previous transition would never clear.
+    if ((phase === "masking" || phase === "dissolving") && !preBsod) {
+      // Transition under way — cover it, don't arm the hide timer yet.
+      setStaticBurst(true);
+      if (staticTimerRef.current) { clearTimeout(staticTimerRef.current); staticTimerRef.current = null; }
+      return;
+    }
+
+    if (selChanged) {
+      // Landed on the new scene — keep static up and arm the auto-hide.
+      setStaticBurst(true);
+      if (staticTimerRef.current) clearTimeout(staticTimerRef.current);
+      staticTimerRef.current = setTimeout(() => {
+        setStaticBurst(false);
+        staticTimerRef.current = null;
+      }, STATIC_DURATION);
+    }
+  }, [selectionIndex, phase, bsodSeen, clearStatic]);
+
+  useEffect(() => () => {
+    if (staticTimerRef.current) clearTimeout(staticTimerRef.current);
+  }, []);
   const onPlayingChange = useCallback((playing: boolean) => setIsPlaying(playing), []);
   const { layers, finalImage } = ALBUM_DATA;
 
@@ -406,17 +468,25 @@ export function AlbumViewport() {
 
   return (
     <div className="fixed inset-0 w-screen h-screen overflow-hidden bsod-bars flex items-center justify-center">
+      {/* CRT barrel-warp filter — displaces the screen; corners pull in to expose the blue behind */}
+      <svg aria-hidden style={{ position: "absolute", width: 0, height: 0 }}>
+        <filter id="crt-warp" colorInterpolationFilters="sRGB">
+          <feImage href="/crt-dispmap.png" x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" result="map" />
+          <feDisplacementMap in="SourceGraphic" in2="map" scale="36" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </svg>
       <div
-        ref={containerRef}
-        className="relative crt-bulge"
+        className="relative"
         style={{
           width: "100%",
           height: "100%",
           maxWidth: `calc(100vh * ${ASPECT_RATIO})`,
           maxHeight: `calc(100vw / ${ASPECT_RATIO})`,
           aspectRatio: `${ASPECT_RATIO}`,
+          overflow: "hidden", // clip the warped/overlay content to the screen (fixes Firefox edge bar)
         }}
       >
+        <div ref={containerRef} className="crt-bulge absolute inset-0">
         {maskApplied && (
           GRADIENT_LAYERS.has(selectionIndex + 1)
             ? <div className="absolute inset-0" style={{ zIndex: 1, background: "linear-gradient(to left, #16222A, #3A6073)", backgroundImage: "url(/images/static.gif)", backgroundSize: "cover" }} />
@@ -493,18 +563,17 @@ export function AlbumViewport() {
           </>
         )}
 
-        {/* Vitriol text overlay on section 2 */}
+        {/* Vitriol text — massive, behind the image-1 cutout (z10) but over the bg (z2) */}
         {selectionIndex >= 1 && selectionIndex <= 1 && !isComplete && (
           <img
             src="/images/vitriol-text.webp"
             alt=""
             draggable={false}
-            className="absolute select-none"
+            className="absolute inset-0 select-none"
             style={{
-              left: "3%",
-              top: "28%",
-              width: "30%",
-              zIndex: 12,
+              width: "100%",
+              height: "100%",
+              zIndex: 5,
               pointerEvents: "none",
               objectFit: "contain",
               imageRendering: "pixelated",
@@ -795,9 +864,6 @@ export function AlbumViewport() {
           </div>
         )}
 
-        {/* BSOD transition between sections 7 and 8 */}
-        {phase === "bsod" && <BsodScreen progress={bsodProgress} onRestart={restartFromBsod} />}
-
         {/* CRT turn-on after BSOD — scroll works underneath */}
         {showCrtOn && (
           <ShutdownTransition onDone={() => setShowCrtOn(false)} />
@@ -834,13 +900,6 @@ export function AlbumViewport() {
         </svg>
         {/* Scroll hint — snakes around the top-left corner and down over the landing scroll */}
         <ScrollHint visible={selectionIndex === 0} progress={selectionIndex === 0 ? sectionProgress : 1} />
-
-        {/* Social links on final screen */}
-        <SocialLinks visible={isComplete} />
-
-        {/* Loading screen runs underneath, power-on screen overlays it */}
-        {!loaded && <LoadingScreen onDone={onLoadDone} paused={!poweredOn} />}
-        {!poweredOn && <PowerOnScreen onPowerOn={() => setPoweredOn(true)} />}
 
         <VhsOverlay active={isPlaying && phase !== "bsod"} containerRef={containerRef} />
 
@@ -888,28 +947,46 @@ export function AlbumViewport() {
           );
         })()}
 
-        {/* Retro player — hidden during BSOD */}
-        {phase !== "bsod" && <RetroPlayer
-          selectionIndex={selectionIndex}
-          totalSections={layers.length}
-          onSkipForward={skipForward}
-          onSkipBack={skipBack}
-          isStamping={isStamping}
-          onPlayingChange={onPlayingChange}
-          autoplay={(selectionIndex === 0 && loaded && poweredOn) || (selectionIndex === layers.length - 1 && showCrtOn)}
-        />}
-      </div>
+        {/* Grey-static "channel change" — inside the warp so it reads as the TV
+            screen flipping channels (non-interactive, so the filter is fine).
+            The dark, clipped container stays put while the inner noise layer
+            rolls/squashes (vertical-hold-slip), exposing a rolling black bar —
+            re-keyed per channel so the flick replays on every flip. */}
+        {staticBurst && (
+          <div className="absolute inset-0" style={{ zIndex: 700, pointerEvents: "none", background: "#0a0a0a", overflow: "hidden" }}>
+            <div className="channel-flick absolute inset-0">
+              <div className="absolute inset-0" style={{ backgroundImage: "url(/images/static.gif)", backgroundSize: "cover", filter: "grayscale(1) contrast(1.1)" }} />
+              <div className="absolute inset-0" style={{ opacity: 0.5 }}><StaticNoise /></div>
+            </div>
+            <div className="absolute inset-0" style={{ background: "rgba(20, 20, 20, 0.2)" }} />
+            <div className="channel-flash absolute inset-0" style={{ background: "#fff" }} />
+          </div>
+        )}
 
-      {/* Nothing here — scroll hint moved inside screen */}
+      </div>{/* end .crt-bulge (filtered scene) */}
 
-      <div
-        className="fixed bottom-4 right-4 text-white/20 text-xs font-mono select-none"
-        style={{ zIndex: 100, pointerEvents: "none" }}
-      >
-        {isComplete
-          ? "complete"
-          : `${selectionIndex + 1}/${layers.length} — ${drawnSegments}/${activeLayer?.selection.points.length ?? 0}`}
-      </div>
+        {/* Screen-positioned controls — NOT filtered (CSS filters break click
+            hit-testing), sized to the same 4:3 screen so they keep their spots. */}
+        <div className="absolute inset-0" style={{ zIndex: 400 }}>
+          <SocialLinks visible={isComplete} />
+          {phase !== "bsod" && <RetroPlayer
+            selectionIndex={selectionIndex}
+            totalSections={layers.length}
+            onSkipForward={skipForward}
+            onSkipBack={skipBack}
+            isStamping={isStamping}
+            onPlayingChange={onPlayingChange}
+            muted={staticBurst}
+            autoplay={(selectionIndex === 0 && loaded && poweredOn) || (selectionIndex === layers.length - 1 && showCrtOn)}
+          />}
+        </div>
+      </div>{/* end 4:3 screen wrapper */}
+
+      {/* Full-screen overlays — kept OUTSIDE the warp wrapper so the filter can't
+          affect their rendering (they were vanishing inside it across engines). */}
+      {!loaded && <LoadingScreen onDone={onLoadDone} paused={!poweredOn} />}
+      {!poweredOn && <PowerOnScreen onPowerOn={() => setPoweredOn(true)} />}
+      {phase === "bsod" && <BsodScreen progress={bsodProgress} onRestart={restartFromBsod} />}
     </div>
   );
 }

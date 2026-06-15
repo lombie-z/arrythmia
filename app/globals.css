@@ -74,6 +74,9 @@ body {
 
 .crt-bulge {
   overflow: hidden;
+  /* CRT barrel warp via SVG displacement map (experimental — re-rasterises the
+     animated screen each frame, so watch the framerate). */
+  filter: url(#crt-warp);
 }
 
 .crt-bulge > * {
@@ -123,6 +126,32 @@ body {
 @keyframes screen-lines {
   from { background-position: 0 0, center; }
   to { background-position: 0 -120px, center; }
+}
+
+/* Static channel-change — a violent CRT channel-flick: the noise rolls and
+   squashes (broken vertical hold) with a brightness jolt, plus a white cut-flash.
+   linear timing keeps the roll mechanical/jittery rather than a smooth ease. */
+.channel-flick {
+  animation: channel-flick 0.3s linear;
+}
+
+@keyframes channel-flick {
+  0%   { transform: translateY(-16%) scaleY(1.1);  filter: brightness(2.6) contrast(1.3); }
+  16%  { transform: translateY(12%)  scaleY(0.88); filter: brightness(0.55); }
+  34%  { transform: translateY(-7%)  scaleY(1.05); filter: brightness(1.7); }
+  52%  { transform: translateY(5%)   scaleY(0.97); filter: brightness(0.85); }
+  70%  { transform: translateY(-3%)  scaleY(1.02); filter: brightness(1.25); }
+  86%  { transform: translateY(1.5%); filter: brightness(0.95); }
+  100% { transform: translateY(0)    scaleY(1);    filter: brightness(1); }
+}
+
+.channel-flash {
+  animation: channel-flash 0.14s ease-out forwards;
+}
+
+@keyframes channel-flash {
+  0%   { opacity: 0.85; }
+  100% { opacity: 0; }
 }
 
 .carousel-spin {

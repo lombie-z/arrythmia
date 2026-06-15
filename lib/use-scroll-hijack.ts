@@ -391,24 +391,12 @@ export function useScrollHijack() {
         return;
       }
 
+      // The error section is a one-way gate: you can't scroll backward out of it.
+      // (Backing out before completing the crash left it "unseen", so it would
+      // re-trigger every time you crossed the boundary — and risked losing
+      // forward progress.) You go forward through it, which marks it seen and
+      // skips it for good. Forward exit / the restart click are the only ways out.
       if (curPhase === "bsod") {
-        const { bsodProgress: curBsod } = stateRef.current;
-        const dec = steps / BSOD_STEPS;
-        const next = Math.max(curBsod - dec, 0);
-        if (next <= 0) {
-          const prevIdx = selectionIndex - 1;
-          const pointCount = getPointCount(prevIdx);
-          setState((s) => ({
-            ...s,
-            phase: "drawing",
-            selectionIndex: prevIdx,
-            sectionProgress: 1,
-            drawnSegments: pointCount,
-            bsodProgress: 0,
-          }));
-        } else {
-          setState((s) => ({ ...s, bsodProgress: next }));
-        }
         return;
       }
 
