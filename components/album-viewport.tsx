@@ -832,8 +832,8 @@ export function AlbumViewport() {
             />
           )}
         </svg>
-        {/* Scroll hint */}
-        <ScrollHint visible={selectionIndex === 0 && drawnSegments === 0} />
+        {/* Scroll hint — snakes around the top-left corner and down over the landing scroll */}
+        <ScrollHint visible={selectionIndex === 0} progress={selectionIndex === 0 ? sectionProgress : 1} />
 
         {/* Social links on final screen */}
         <SocialLinks visible={isComplete} />
