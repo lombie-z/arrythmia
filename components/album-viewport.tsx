@@ -964,10 +964,26 @@ export function AlbumViewport() {
         )}
 
       </div>{/* end .crt-bulge (filtered scene) */}
+      </div>{/* end 4:3 screen wrapper */}
 
-        {/* Screen-positioned controls — NOT filtered (CSS filters break click
-            hit-testing), sized to the same 4:3 screen so they keep their spots. */}
-        <div className="absolute inset-0" style={{ zIndex: 400 }}>
+      {/* Screen-positioned controls — NOT filtered (CSS filters break click
+          hit-testing). Kept OUTSIDE the overflow:hidden warp wrapper because
+          Safari (iOS + mobile widths) clips position:fixed descendants of an
+          overflow:hidden ancestor once the page is layerised by the CRT filter,
+          so the mobile player vanished. This layer is full-viewport, unclipped
+          and untransformed (so fixed escapes to the viewport), and re-centres the
+          same 4:3 "screen" box the controls anchor to, so desktop is unchanged. */}
+      <div className="absolute inset-0 flex items-center justify-center" style={{ zIndex: 400 }}>
+        <div
+          className="relative"
+          style={{
+            width: "100%",
+            height: "100%",
+            maxWidth: `calc(100vh * ${ASPECT_RATIO})`,
+            maxHeight: `calc(100vw / ${ASPECT_RATIO})`,
+            aspectRatio: `${ASPECT_RATIO}`,
+          }}
+        >
           <SocialLinks visible={isComplete} />
           {phase !== "bsod" && <RetroPlayer
             selectionIndex={selectionIndex}
@@ -980,7 +996,7 @@ export function AlbumViewport() {
             autoplay={(selectionIndex === 0 && loaded && poweredOn) || (selectionIndex === layers.length - 1 && showCrtOn)}
           />}
         </div>
-      </div>{/* end 4:3 screen wrapper */}
+      </div>
 
       {/* Full-screen overlays — kept OUTSIDE the warp wrapper so the filter can't
           affect their rendering (they were vanishing inside it across engines). */}
