@@ -166,35 +166,23 @@ const STAGES: { threshold: number; content: TextStage }[] = [
     threshold: 0,
     content: {
       face: "404",
-      message:
-        "Got distracted, sorry. Looking for your page right now.",
+      message: "aw shit we lost the computer",
       errorCode: "",
     },
   },
   {
-    threshold: 25,
+    threshold: 30,
     content: {
       face: "403",
-      message:
-        "Forbidden? I’m sure it’s fine. Will update.",
+      message: "Computah, Computah! Where art thou!",
       errorCode: "",
     },
   },
   {
-    threshold: 50,
-    content: {
-      face: "418",
-      message:
-        "That’s not even a real error code. There’s a lot of crap in here...",
-      errorCode: "",
-    },
-  },
-  {
-    threshold: 70,
+    threshold: 60,
     content: {
       face: "500",
-      message:
-        "I think I made a mistake. Don’t keep scrolling.",
+      message: "It’s getting kinda hot in here... I think we took a wrong turn",
       errorCode: "",
     },
   },
@@ -202,7 +190,7 @@ const STAGES: { threshold: number; content: TextStage }[] = [
     threshold: 80,
     content: {
       face: "",
-      message: "Thanks dude. Thanks. Now I have to restart it - little scroll addict, you.",
+      message: "Oh... um... this is awkward... let’s just restart.",
       errorCode: "",
     },
   },
