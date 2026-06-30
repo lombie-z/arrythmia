@@ -3,16 +3,19 @@ import "./globals.css";
 import { PlayingProvider } from "@/lib/playing-context";
 
 export const metadata: Metadata = {
-  title: "arrhythmia — I. Rozsa",
+  title: "Arrhythmia — Isaac Rozsa",
   description:
-    "arrhythmia — an album by I. Rozsa. Sydney-based bedroom producer and composer.",
+    "Arrhythmia. Independent album by Isaac Rozsa, just me and my synths.",
   metadataBase: new URL("https://arrhythmia.isaacrozsa.com"),
   icons: {
-    icon: "/favicon.svg",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
   },
   openGraph: {
-    title: "arrhythmia — I. Rozsa",
-    description: "arrhythmia — an album by I. Rozsa.",
+    title: "Arrhythmia — Isaac Rozsa",
+    description: "Arrhythmia. Independent album by Isaac Rozsa, just me and my synths.",
     type: "website",
     siteName: "arrhythmia",
     images: [
@@ -25,8 +28,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "arrhythmia — I. Rozsa",
-    description: "arrhythmia — an album by I. Rozsa.",
+    title: "Arrhythmia — Isaac Rozsa",
+    description: "Arrhythmia. Independent album by Isaac Rozsa, just me and my synths.",
     images: ["/og-image.png"],
   },
 };
