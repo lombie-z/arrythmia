@@ -5,7 +5,7 @@ import { PlayingProvider } from "@/lib/playing-context";
 export const metadata: Metadata = {
   title: "Arrhythmia — Isaac Rozsa",
   description:
-    "Arrhythmia. Independent album by Isaac Rozsa, just me and my synths.",
+    "Arrhythmia. Independent album by Isaac Rozsa, my indie, neo-classical sulk.",
   metadataBase: new URL("https://arrhythmia.isaacrozsa.com"),
   icons: {
     icon: [
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "Arrhythmia — Isaac Rozsa",
-    description: "Arrhythmia. Independent album by Isaac Rozsa, just me and my synths.",
+    description: "Arrhythmia. Independent album by Isaac Rozsa, my indie, neo-classical sulk.",
     type: "website",
     siteName: "arrhythmia",
     images: [
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Arrhythmia — Isaac Rozsa",
-    description: "Arrhythmia. Independent album by Isaac Rozsa, just me and my synths.",
+    description: "Arrhythmia. Independent album by Isaac Rozsa, my indie, neo-classical sulk.",
     images: ["/og-image.png"],
   },
 };
