@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/:path*",
-        destination: "https://isaacrozsa.com/arrhythmia/:path*",
+        destination: "https://www.isaacrozsa.com/arrhythmia/:path*",
         permanent: true,
       },
     ];
